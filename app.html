@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Music Co-pilot - Evolution v5.0</title>
+    <title>AI Music Co-pilot - Evolution v5.1</title>
     <style>
         * {
             margin: 0;
@@ -343,6 +343,12 @@
             transform: translateX(6px);
             border-color: rgba(0,255,136,0.4);
         }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
         
         .mixer {
             background: rgba(0,0,0,0.4);
@@ -429,6 +435,118 @@
             background: #00ff88; border-radius: 50%;
             margin-right: 8px;
         }
+
+        /* --- NEW: HELP MODAL STYLES --- */
+        .help-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none; /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(15px);
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .help-modal-content {
+            background: #1e1e2d;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            animation: slideIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(50px) scale(0.95); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .help-modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .help-modal-header h2 {
+            color: #00ff88;
+            font-size: 1.5rem;
+        }
+
+        .close-help-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            line-height: 35px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .close-help-btn:hover {
+            background: #ff4757;
+            transform: rotate(90deg);
+        }
+
+        .help-modal-body {
+            padding: 30px;
+            overflow-y: auto;
+            line-height: 1.7;
+        }
+
+        .help-modal-body h3 {
+            color: #00d4ff;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+            padding-bottom: 5px;
+        }
+        .help-modal-body h3:first-child {
+            margin-top: 0;
+        }
+
+        .help-modal-body p {
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+        
+        .help-modal-body code {
+            background: rgba(0,0,0,0.5);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', monospace;
+            color: #ff6b9d;
+        }
+        
+        .help-modal-body ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .help-modal-body li {
+            background: rgba(255,255,255,0.05);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid #00d4ff;
+        }
     </style>
 </head>
 <body>
@@ -443,16 +561,63 @@
             </button>
         </div>
     </div>
+    
+    <!-- NEW: HELP MODAL -->
+    <div class="help-modal-overlay" id="helpModal">
+        <div class="help-modal-content">
+            <div class="help-modal-header">
+                <h2>📖 Co-pilot Manual</h2>
+                <button class="close-help-btn" onclick="toggleHelpModal()">&times;</button>
+            </div>
+            <div class="help-modal-body">
+                <h3>Welcome to the AI Music Co-pilot!</h3>
+                <p>This is your guide to creating music with your AI partner. The AI is context-aware, meaning it remembers what's playing and makes intelligent suggestions. You can build a track layer by layer, just by talking to it.</p>
+                
+                <h3>Getting Started: Your First Track in 3 Steps</h3>
+                <ol>
+                    <li>Start with a beat: Try <code>"create a simple house beat"</code> or <code>"give me a fast techno rhythm"</code>.</li>
+                    <li>Add a bassline: Try <code>"add a funky bassline that fits"</code>. The AI will listen to the beat and match the vibe.</li>
+                    <li>Add harmony: Try <code>"add some chill chords"</code> or <code>"create an epic pad progression in C minor"</code>.</li>
+                </ol>
+                
+                <h3>🥁 The Drum Machine</h3>
+                <p>You can ask for drums using natural language, or use this special syntax for precise control: <code>play drums "[pattern]"</code>. The pattern characters are:</p>
+                <ul>
+                    <li><code>x</code> - Kick Drum</li>
+                    <li><code>o</code> - Snare Drum</li>
+                    <li><code>h</code> - Closed Hi-Hat</li>
+                    <li><code>H</code> - Open Hi-Hat</li>
+                    <li><code>c</code> - Clap</li>
+                    <li><code>t</code> - Tom Drum</li>
+                    <li><code>-</code> or <code>.</code> - Rest (silence)</li>
+                </ul>
+                <p><strong>Example:</strong> <code>play drums "x-H-c-H-"</code> creates a classic house groove.</p>
+
+                <h3>🎹 Melodic Instruments</h3>
+                <p>For bass, leads, or pads, use this syntax: <code>play [type] [notes] as [preset]</code>.</p>
+                <ul>
+                    <li><strong>Type:</strong> Can be <code>bass</code>, <code>lead</code>, or <code>pads</code>.</li>
+                    <li><strong>Notes:</strong> A list of numbers like <code>[0, 4, 7]</code>. These work like piano keys, where <code>0</code> is the root note (C), <code>1</code> is C#, <code>2</code> is D, etc. Negative numbers work too!</li>
+                    <li><strong>Preset:</strong> Defines the sound. Try <code>saw-lead</code>, <code>sine-pad</code>, or <code>square-bass</code>.</li>
+                </ul>
+                 <p><strong>Example:</strong> <code>play pads [0, 4, 7] as sine-pad</code> creates a beautiful C Major chord with a soft pad sound.</p>
+                 
+                 <h3>✨ Advanced AI Techniques</h3>
+                 <p>Don't forget to use your AI Co-pilot features in the Controls Panel! After you have a few layers playing, click <strong>"Analyze Track"</strong> for creative suggestions, or <strong>"Name My Track"</strong> to get a title and description for your masterpiece.</p>
+            </div>
+        </div>
+    </div>
 
     <div class="app-container">
         <header class="header">
-            <a href="#" class="logo">
-                🎵 AI Music Co-pilot <span class="version-tag">Evolution v5</span>
+            <a href="index.html" class="logo">
+                🎵 AI Music Co-pilot <span class="version-tag">Evolution v5.1</span>
             </a>
             <div class="header-controls">
                 <div class="status-indicator">
                     <span id="audioStatusText">Audio Disabled</span>
                 </div>
+                <button class="header-btn" onclick="toggleHelpModal()">📖 Help</button>
                 <button class="header-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
                 <button class="header-btn" onclick="shareProject()">🔗 Share</button>
             </div>
@@ -484,7 +649,7 @@
         <main class="terminal-container">
             <div class="terminal">
                 <div class="terminal-header">
-                    <div class="terminal-title">Evolution Audio Engine v5.0</div>
+                    <div class="terminal-title">Evolution Audio Engine v5.1</div>
                     <div class="terminal-stats">
                         <span>BPM: <span id="bpmDisplay">120</span></span>
                         <span>⏱️ <span id="timeDisplay">00:00</span></span>
@@ -524,9 +689,15 @@
             </div>
 
             <div class="control-section">
+                <h3>✨ AI Co-pilot</h3>
+                <button class="control-btn" id="analyzeBtn" onclick="analyzeTrack()">🧠 ✨ Analyze Track</button>
+                <button class="control-btn" id="nameTrackBtn" onclick="nameMyTrack()">🏷️ ✨ Name My Track</button>
+            </div>
+
+            <div class="control-section">
                 <h3>⏯️ Transport & State</h3>
                 <button class="control-btn" style="background: rgba(255,71,87,0.2); border-color: #ff4757;" onclick="stopAllSounds()">⏹️ Stop All</button>
-                <button class="control-btn" onclick="showCurrentState()">🧠 View AI State</button>
+                <button class="control-btn" onclick="showCurrentState()">🎼 View AI State</button>
                 <button class="control-btn" onclick="clearTerminal()">🧹 Clear Log</button>
             </div>
 
@@ -540,9 +711,9 @@
     </div>
 
     <script>
-        // ===== EVOLUTION AUDIO ENGINE v5.0 =====
-        // Merges the "Bulletproof" front-end (update.html) with the context-aware AI logic (aimuco_v5Evolution_fixed.py).
-        // Coded by Gemini, inspired by Gabriel's vision for SwiftSell AI.
+        // ===== EVOLUTION AUDIO ENGINE v5.1 =====
+        // Implements the user-defined "AI Brain" for context-aware music generation.
+        // Adds a versatile synth engine with multiple drum sounds and melodic presets.
         
         let audioContext = null;
         let masterGain = null;
@@ -555,11 +726,9 @@
         let currentTempo = 120;
         let apiKey = '';
         let startTime = Date.now();
-        
-        // --- NEW: The Music's "Memory" (State Management from Python) ---
         let musicState = {};
 
-        // --- CORE AUDIO INITIALIZATION & MANAGEMENT (from update.html) ---
+        // --- CORE AUDIO INITIALIZATION & MANAGEMENT ---
 
         function detectMobileDevice() {
             isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -570,7 +739,7 @@
         }
 
         async function initializeAudio() {
-            if (audioInitialized) return;
+            if (audioInitialized) return true;
             try {
                 document.getElementById('audioInitOverlay').style.display = 'none';
                 
@@ -599,22 +768,23 @@
                 addOutput('🎵 Evolution Audio Engine Initialized!', 'system');
                 
                 initVisualizer();
+                return true;
             } catch (error) {
                 document.getElementById('audioStatusText').textContent = 'Audio Failed';
                 addOutput(`❌ Audio initialization failed: ${error.message}`, 'error');
+                return false;
             }
         }
 
         async function ensureAudioContext() {
             if (!audioInitialized) {
-                addOutput('❌ Please initialize audio first by clicking the "Enable" button.', 'error');
-                return false;
+                return await initializeAudio();
             }
             if (audioContext.state === 'suspended') await audioContext.resume();
             return true;
         }
 
-        // --- "BULLETPROOF" AUDIO COMPONENTS (from update.html) ---
+        // --- "BULLETPROOF" AUDIO COMPONENTS ---
 
         class BulletproofADSR {
             constructor(audioContext, gainNode) {
@@ -637,27 +807,43 @@
             constructor() {
                 this.activeNodes = new Set();
             }
-            createOscillator() {
+            createNode(type) {
                 this.cleanup();
                 if (this.activeNodes.size >= maxConcurrentOscillators) {
                     addOutput(`⚠️ Audio limit reached.`, 'warning');
                     return null;
                 }
-                const osc = audioContext.createOscillator();
+                
+                let node;
+                if(type === 'osc') node = audioContext.createOscillator();
+                else if (type === 'noise') {
+                     const bufferSize = audioContext.sampleRate * 0.5; // 0.5s buffer for noise
+                     const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                     const output = buffer.getChannelData(0);
+                     for (let i = 0; i < bufferSize; i++) {
+                         output[i] = Math.random() * 2 - 1;
+                     }
+                     node = audioContext.createBufferSource();
+                     node.buffer = buffer;
+                     node.loop = true;
+                }
+
                 const gain = audioContext.createGain();
-                const nodeGroup = { osc, gain, finished: false };
+                const nodeGroup = { node, gain, finished: false };
                 this.activeNodes.add(nodeGroup);
-                osc.onended = () => {
+                
+                node.onended = () => {
                     nodeGroup.finished = true;
                     this.cleanup();
                 };
+                
                 return nodeGroup;
             }
             cleanup() {
                 for (const nodeGroup of this.activeNodes) {
                     if (nodeGroup.finished) {
                         try {
-                            nodeGroup.osc.disconnect();
+                            nodeGroup.node.disconnect();
                             nodeGroup.gain.disconnect();
                         } catch (e) {}
                         this.activeNodes.delete(nodeGroup);
@@ -671,7 +857,7 @@
                         nodeGroup.gain.gain.cancelScheduledValues(now);
                         nodeGroup.gain.gain.setValueAtTime(nodeGroup.gain.gain.value, now);
                         nodeGroup.gain.gain.linearRampToValueAtTime(0.001, now + 0.1);
-                        nodeGroup.osc.stop(now + 0.1);
+                        if(nodeGroup.node.stop) nodeGroup.node.stop(now + 0.1);
                     } catch (e) {}
                 }
             }
@@ -708,33 +894,57 @@
         }
         const scheduler = new PrecisionScheduler();
 
-        function createBulletproofOscillator(frequency, waveform = 'sine', duration = 1, effects = {}) {
+        // --- EXPANDED INSTRUMENT SYNTHESIS ---
+
+        function createBulletproofOscillator(frequency, preset = 'saw-lead', duration = 1) {
             if (!ensureAudioContext()) return null;
-            const nodeGroup = oscillatorPool.createOscillator();
+            const nodeGroup = oscillatorPool.createNode('osc');
             if (!nodeGroup) return null;
-            
-            const { osc, gain } = nodeGroup;
+
+            const { node: osc, gain } = nodeGroup;
             const filter = audioContext.createBiquadFilter();
+            
+            let waveform = 'sawtooth';
+            let cutoff = 8000;
+            let resonance = 1;
+            let attack = 0.02, decay = 0.3, sustain = 0.7, release = 0.5, amplitude = 0.3;
+
+            switch(preset) {
+                case 'sine-pad':
+                    waveform = 'sine';
+                    cutoff = 4000;
+                    attack = 0.8; decay = 0.5; sustain = 0.8; release = 1.5; amplitude = 0.4;
+                    break;
+                case 'square-bass':
+                    waveform = 'square';
+                    cutoff = 800;
+                    attack = 0.01; decay = 0.2; sustain = 0.4; release = 0.3; amplitude = 0.5;
+                    break;
+                case 'saw-lead':
+                default:
+                    // Keep default values
+                    break;
+            }
+
             filter.type = 'lowpass';
-            filter.frequency.value = effects.cutoff || 8000;
-            filter.Q.value = effects.resonance || 1;
+            filter.frequency.value = cutoff;
+            filter.Q.value = resonance;
             
             osc.type = waveform;
             osc.frequency.setValueAtTime(frequency, audioContext.currentTime);
             
             const envelope = new BulletproofADSR(audioContext, gain);
-            const amplitude = Math.min(0.8, effects.amplitude || 0.3);
             
             osc.connect(filter);
             filter.connect(gain);
             gain.connect(masterGain);
             
-            envelope.trigger(effects.attack || 0.02, effects.decay || 0.3, effects.sustain || 0.7, effects.release || 0.5, duration);
+            envelope.trigger(attack, decay, sustain, release, duration);
             gain.gain.value *= amplitude;
             
             const startTime = audioContext.currentTime;
             osc.start(startTime);
-            osc.stop(startTime + duration + (effects.release || 0.5) + 0.5);
+            osc.stop(startTime + duration + release + 0.5);
             
             return nodeGroup;
         }
@@ -744,27 +954,27 @@
             const now = audioContext.currentTime;
 
             if (type === 'kick' || type === 'x') {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
+                const oscGroup = oscillatorPool.createNode('osc');
+                if(!oscGroup) return;
+                const { node: osc, gain } = oscGroup;
                 osc.type = 'sine';
-                
                 gain.gain.setValueAtTime(1, now);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-                
                 osc.frequency.setValueAtTime(120, now);
                 osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
-
                 osc.connect(gain);
                 gain.connect(masterGain);
                 osc.start(now);
                 osc.stop(now + 0.2);
             } else if (type === 'snare' || type === 'o') {
-                const noise = createBulletproofNoise(0.2);
-                const osc = audioContext.createOscillator();
-                const noiseGain = audioContext.createGain();
-                const oscGain = audioContext.createGain();
-                const filter = audioContext.createBiquadFilter();
+                const noiseGroup = oscillatorPool.createNode('noise');
+                const oscGroup = oscillatorPool.createNode('osc');
+                if(!noiseGroup || !oscGroup) return;
+
+                const { node: noise, gain: noiseGain } = noiseGroup;
+                const { node: osc, gain: oscGain } = oscGroup;
                 
+                const filter = audioContext.createBiquadFilter();
                 filter.type = 'highpass';
                 filter.frequency.value = 1500;
 
@@ -783,48 +993,95 @@
                 oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
 
                 noise.start(now);
-                noise.stop(now + 0.2);
+                const noiseSrc = noise;
+                setTimeout(() => {
+                    noiseSrc.stop();
+                    noiseSrc.disconnect();
+                }, 200);
                 osc.start(now);
                 osc.stop(now + 0.1);
             } else if (type === 'hihat' || type === 'h' || type === '.') {
-                const noise = createBulletproofNoise(0.1);
-                const gain = audioContext.createGain();
+                const noiseGroup = oscillatorPool.createNode('noise');
+                if(!noiseGroup) return;
+                const { node: noise, gain } = noiseGroup;
                 const filter = audioContext.createBiquadFilter();
-
                 filter.type = 'highpass';
                 filter.frequency.value = 8000;
-
                 noise.connect(filter);
                 filter.connect(gain);
                 gain.connect(masterGain);
-
                 gain.gain.setValueAtTime(0.3, now);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-
                 noise.start(now);
-                noise.stop(now + 0.1);
+                const noiseSrc = noise;
+                setTimeout(() => {
+                    noiseSrc.stop();
+                    noiseSrc.disconnect();
+                }, 100);
+            } else if (type === 'open-hihat' || type === 'H') {
+                const noiseGroup = oscillatorPool.createNode('noise');
+                if(!noiseGroup) return;
+                const { node: noise, gain } = noiseGroup;
+                const filter = audioContext.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 7000;
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(masterGain);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                noise.start(now);
+                const noiseSrc = noise;
+                setTimeout(() => {
+                    noiseSrc.stop();
+                    noiseSrc.disconnect();
+                }, 500);
+            } else if (type === 'clap' || type === 'c') {
+                const noiseGroup = oscillatorPool.createNode('noise');
+                if(!noiseGroup) return;
+                const { node: noise, gain } = noiseGroup;
+                const filter = audioContext.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1500;
+                filter.Q.value = 2;
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(masterGain);
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(1, now + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                noise.start(now);
+                const noiseSrc = noise;
+                setTimeout(() => {
+                    noiseSrc.stop();
+                    noiseSrc.disconnect();
+                }, 150);
+            } else if (type === 'tom' || type === 't') {
+                const oscGroup = oscillatorPool.createNode('osc');
+                if(!oscGroup) return;
+                const { node: osc, gain } = oscGroup;
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0.8, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.3);
+                osc.connect(gain);
+                gain.connect(masterGain);
+                osc.start(now);
+                osc.stop(now + 0.3);
             }
         }
         
-        function createBulletproofNoise(duration) {
-            const bufferSize = audioContext.sampleRate * duration;
-            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
-            const output = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                output[i] = Math.random() * 2 - 1;
-            }
-            const noiseSource = audioContext.createBufferSource();
-            noiseSource.buffer = buffer;
-            return noiseSource;
-        }
-
-
-        // --- EVOLVED AI & COMMAND PROCESSING (from aimuco_v5Evolution_fixed.py) ---
+        // --- EVOLVED AI & COMMAND PROCESSING ---
 
         function getMusicStateSummary() {
             const activePlayers = Object.entries(musicState)
-                .filter(([_, data]) => data.status !== 'stopped')
-                .reduce((obj, [key, val]) => ({ ...obj, [key]: val }), {});
+                .filter(([_, data]) => data.status === 'playing')
+                .reduce((obj, [key, val]) => {
+                    const { nextEventId, ...rest } = val; 
+                    obj[key] = rest;
+                    return obj;
+                }, {});
             
             if (Object.keys(activePlayers).length === 0) {
                 return "The musical canvas is empty.";
@@ -838,30 +1095,22 @@
                 return null;
             }
             
-            addOutput('🤖 AI is thinking...', 'ai');
-            const systemInstruction = `You are an elite electronic music producer acting as a real-time musical co-pilot.
-Your entire response MUST be a single, valid JSON object with NO additional text or explanation.
-The JSON object must have "command" (a string) and "metadata" (an object).
+            addOutput('🤖 AI is composing...', 'ai');
+            const systemInstruction = `You are an elite electronic music producer for a browser-based synthesizer. Your entire response MUST be a single, valid JSON object with NO additional text or explanation. The JSON object must have "command" and "metadata".
 
-- For melodic/harmonic parts, metadata should include "player", "type" (bass/lead/pads), "notes".
-- For drums, metadata should include "player", "type" ("drum"), and "pattern".
-- For actions like 'stop', metadata should include "player" and "action: 'stop'".
-- You MUST use the player name suggested by the context if modifying or stopping an element.
+COMMAND SYNTAX:
+- "play drums '[pattern]'" (pattern uses x, o, h, H, c, t, -, .)
+- "play [type] [notes] as [preset]" (type: lead, bass, pads; notes: [0,2,4]; preset: saw-lead, sine-pad, square-bass)
+- "stop [player]" (e.g., "stop d1")
+
+METADATA REQUIREMENTS:
+- Melodic parts: { "player": "p1", "type": "pads", "preset": "sine-pad", "notes": [0,4,7] }
+- Drum parts: { "player": "d1", "type": "drum", "pattern": "x-o-x-o-" }
+- Stop actions: { "player": "d1", "action": "stop" }
 
 User Request: "${prompt}"
 Current Musical State:
-${getMusicStateSummary()}
-
-Example Response for "add a simple house beat":
-{
-  "command": "play drums \\"x-o-x-o-\\"",
-  "metadata": { "player": "d1", "type": "drum", "pattern": "x-o-x-o-" }
-}
-Example Response for "stop the drums":
-{
-  "command": "stop d1",
-  "metadata": { "player": "d1", "action": "stop" }
-}`;
+${getMusicStateSummary()}`;
 
             try {
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
@@ -869,7 +1118,7 @@ Example Response for "stop the drums":
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: systemInstruction }] }],
-                        generationConfig: { temperature: 0.8, maxOutputTokens: 300 }
+                        generationConfig: { temperature: 0.8, maxOutputTokens: 400, responseMimeType: "application/json" }
                     })
                 });
                 
@@ -877,13 +1126,10 @@ Example Response for "stop the drums":
                 
                 const data = await response.json();
                 const text = data.candidates[0].content.parts[0].text;
-                const jsonMatch = text.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    const result = JSON.parse(jsonMatch[0]);
-                    addOutput(`🎵 AI generated a command.`, 'ai');
-                    return result;
-                }
-                throw new Error("Invalid JSON in AI response.");
+                const result = JSON.parse(text);
+                addOutput(`🎵 AI generated a command.`, 'ai');
+                return result;
+
             } catch (error) {
                 addOutput(`❌ AI API Error: ${error.message}`, 'error');
                 console.error(error);
@@ -893,21 +1139,6 @@ Example Response for "stop the drums":
 
         async function executeCommand(command) {
             if (!await ensureAudioContext()) return;
-            
-            command = command.toLowerCase().trim();
-            
-            if (command === 'help') {
-                showBulletproofHelp();
-                return;
-            }
-            if (command === 'clear') {
-                clearTerminal();
-                return;
-            }
-            if (command === 'stop all') {
-                stopAllSounds();
-                return;
-            }
             
             const aiResponse = await callGeminiAPI(command);
             if (aiResponse && aiResponse.command && aiResponse.metadata) {
@@ -925,7 +1156,7 @@ Example Response for "stop the drums":
                     return;
                 }
                 
-                const drumMatch = command.match(/play\s+drums\s+["']([xoh\.\-\s]+)["']/);
+                const drumMatch = command.match(/play\s+drums\s+["']([xohHct\.\-\s]+)["']/);
                 if (drumMatch) {
                     const player = getNextPlayer('d');
                     const pattern = drumMatch[1];
@@ -934,14 +1165,15 @@ Example Response for "stop the drums":
                     return;
                 }
                 
-                const melodyMatch = command.match(/play\s+(bass|lead|pads)\s+\[([0-9,\s\-]+)\]/);
+                const melodyMatch = command.match(/play\s+(bass|lead|pads)\s+\[([0-9,\s\-]+)\]\s+as\s+([a-z\-]+)/);
                 if (melodyMatch) {
                     const type = melodyMatch[1];
                     const notes = melodyMatch[2].split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+                    const preset = melodyMatch[3];
                     const player = getNextPlayer(type.charAt(0));
-                    const octave = type === 'bass' ? 2 : 4;
-                    startBulletproofPlayer(player, { type, notes, octave });
-                    addOutput(`✅ Playing ${type} [${player.toUpperCase()}]: [${notes.join(',')}]`, 'success');
+                    const octave = type === 'bass' ? 3 : 4;
+                    startBulletproofPlayer(player, { type, notes, octave, preset });
+                    addOutput(`✅ Playing ${type} [${player.toUpperCase()}] as ${preset}: [${notes.join(',')}]`, 'success');
                     return;
                 }
             } catch (error) {
@@ -1007,9 +1239,7 @@ Example Response for "stop the drums":
                 const note = notes[currentNote % notes.length];
                 const frequency = 440 * Math.pow(2, (note - 9 + (config.octave - 4) * 12) / 12);
                 
-                createBulletproofOscillator(frequency, 'sawtooth', noteDuration * 0.8, {
-                    amplitude: 0.4, attack: 0.02, release: 0.3
-                });
+                createBulletproofOscillator(frequency, config.preset, noteDuration * 0.8);
                 
                 currentNote++;
                 musicState[player].nextEventId = scheduler.schedule(scheduleNextNote, noteDuration);
@@ -1019,7 +1249,12 @@ Example Response for "stop the drums":
 
         // --- UI & CONTROL FUNCTIONS ---
 
-        function processCommand() {
+        async function processCommand() {
+            if (!await ensureAudioContext()){
+                 addOutput('❌ Cannot process command until audio is enabled.', 'error');
+                 return;
+            }
+            
             const input = document.getElementById('commandInput');
             const command = input.value.trim();
             if (!command) return;
@@ -1070,7 +1305,7 @@ Example Response for "stop the drums":
         }
 
         function stopAllSounds() {
-            Object.keys(musicState).forEach(stopPlayer);
+            Object.keys(musicState).forEach(key => musicState[key].status = 'stopped');
             scheduler.cancelAll();
             if (audioInitialized) oscillatorPool.stopAll();
             musicState = {}; 
@@ -1079,8 +1314,11 @@ Example Response for "stop the drums":
         }
         
         function clearTerminal() {
-            document.getElementById('output').innerHTML = '';
-            addOutput('🎵 Evolution terminal ready.', 'system');
+            const command = 'clear';
+            if (command === 'clear') {
+                document.getElementById('output').innerHTML = '';
+                 addOutput('🎵 Evolution terminal ready.', 'system');
+            }
         }
 
         function updatePlayersDisplay() {
@@ -1110,22 +1348,102 @@ Example Response for "stop the drums":
             return `${type}${i}`;
         }
 
-        function showBulletproofHelp() {
-            addOutput('🎵 EVOLUTION AI CO-PILOT HELP', 'system');
-            addOutput('🤖 CONTEXT-AWARE AI:', 'ai');
-            addOutput('  "create a driving techno beat"', 'ai');
-            addOutput('  "now add a bassline that fits"', 'ai');
-            addOutput('  "stop the bassline"', 'ai');
-            addOutput('⚡ DIRECT COMMANDS:', 'success');
-            addOutput('  play drums "x-o-x-h-"', 'success');
-            addOutput('  play bass [0,0,7,0]', 'success');
-            addOutput('🎚️ CONTROLS: stop all, help, clear', 'info');
+        function toggleHelpModal() {
+            const modal = document.getElementById('helpModal');
+            const isVisible = modal.style.display === 'flex';
+            modal.style.display = isVisible ? 'none' : 'flex';
         }
         
         function showCurrentState() {
             const summary = getMusicStateSummary();
             addOutput('🧠 Current AI Memory (State):', 'system');
-            const formatted = summary.split('\n').forEach(line => addOutput(line, 'info'));
+            summary.split('\n').forEach(line => addOutput(line, 'info'));
+        }
+
+        // --- GEMINI-POWERED FEATURES ---
+
+        function setAiButtonsLoading(isLoading) {
+            document.getElementById('analyzeBtn').disabled = isLoading;
+            document.getElementById('nameTrackBtn').disabled = isLoading;
+            if (isLoading) {
+                 document.getElementById('analyzeBtn').textContent = '🧠 ✨ Analyzing...';
+                 document.getElementById('nameTrackBtn').textContent = '🏷️ ✨ Generating...';
+            } else {
+                 document.getElementById('analyzeBtn').textContent = '🧠 ✨ Analyze Track';
+                 document.getElementById('nameTrackBtn').textContent = '🏷️ ✨ Name My Track';
+            }
+        }
+        
+        async function callGeminiTextAPI(systemPrompt, userQuery) {
+            if (!apiKey) {
+                addOutput('❌ Please configure your API key first to use this feature.', 'error');
+                return null;
+            }
+            if (Object.keys(musicState).filter(p => musicState[p].status === 'playing').length === 0) {
+                 addOutput('🤔 Your canvas is empty. Add some music before using the AI co-pilot features!', 'warning');
+                 return null;
+            }
+        
+            setAiButtonsLoading(true);
+            addOutput('✨ Calling the Gemini Co-pilot...', 'ai');
+        
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userQuery }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
+                });
+        
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } catch (error) {
+                addOutput(`❌ AI Co-pilot Error: ${error.message}`, 'error');
+                return null;
+            } finally {
+                setAiButtonsLoading(false);
+            }
+        }
+        
+        async function analyzeTrack() {
+             const systemPrompt = "You are a friendly and encouraging music theory professor. Analyze the provided musical data and give constructive feedback. Your goal is to inspire the user, not criticize them. Provide 3 concrete suggestions for what they could add or change next. Keep your response concise and formatted with markdown bullet points.";
+             const musicStateSummary = getMusicStateSummary();
+             const userQuery = `Here is the current state of my track in JSON format:\n\n${musicStateSummary}\n\nPlease provide a brief analysis of the musical mood and structure, and suggest 3 things I could add next (e.g., a new instrument, a change in rhythm, a melodic counterpoint).`;
+        
+             const result = await callGeminiTextAPI(systemPrompt, userQuery);
+             if (result) {
+                 addOutput('--- AI Music Analysis ---', 'system');
+                 result.split('\n').forEach(line => addOutput(line, 'ai'));
+                 addOutput('-------------------------', 'system');
+             }
+        }
+        
+        async function nameMyTrack() {
+            const systemPrompt = "You are a creative A&R scout for a modern record label. You have a talent for naming tracks and describing music in a cool, evocative way. Your response MUST be a single, valid JSON object with two keys: 'title' and 'description', with no extra text or markdown.";
+            const musicStateSummary = getMusicStateSummary();
+            const userQuery = `Based on the following musical data, please generate a creative and fitting track title and a short (1-2 sentence) description for a streaming service.\n\n${musicStateSummary}`;
+        
+            const result = await callGeminiTextAPI(systemPrompt, userQuery);
+            if (result) {
+                try {
+                    const jsonMatch = result.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch) throw new Error("No JSON object found in response.");
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    
+                    addOutput('--- AI Track Finalizer ---', 'system');
+                    addOutput(`Title Suggestion: "${parsed.title}"`, 'success');
+                    addOutput(`Description: ${parsed.description}`, 'info');
+                    addOutput('-------------------------', 'system');
+
+                } catch (e) {
+                     addOutput('❌ AI returned an invalid format for the track name.', 'error');
+                     console.error(e, "Raw response:", result);
+                }
+            }
         }
 
         function initVisualizer() {
@@ -1149,25 +1467,43 @@ Example Response for "stop the drums":
         }
         
         const presets = {
-            techno: [{ command: 'play drums "x---x---x---x---"' }, { command: 'play bass [0,0,7,0]' }],
-            house: [{ command: 'play drums "x-o-x-h-x-o-x-h-"' }, { command: 'play pads [0,4,7,11]' }],
-            ambient: [{ command: 'play pads [0,4,7,11]' }],
-            dnb: [{ command: 'play drums "x--o--x-o--x-o--" at 170bpm' }, { command: 'play bass [0,7,5,3]' }]
+            techno: [{ command: 'play drums "x-c-x-c-"' }, { command: 'play bass [0,0,7,0] as square-bass' }],
+            house: [{ command: 'play drums "x-H-o-H-"' }, { command: 'play pads [0,4,7,11] as sine-pad' }],
+            ambient: [{ command: 'play pads [0,4,7,11] as sine-pad' }],
+            dnb: [{ command: 'play drums "x-t-o--t" at 170bpm' }, { command: 'play bass [0,7,5,3] as saw-lead' }]
         };
 
-        function loadPreset(presetName) {
-            if (!presets[presetName] || !audioInitialized) return;
+        async function loadPreset(presetName) {
+            if (!presets[presetName]) return;
+            if (!await ensureAudioContext()) return;
             stopAllSounds();
             addOutput(`🎼 Loading ${presetName.toUpperCase()} preset...`, 'system');
-            presets[presetName].forEach((item, index) => {
-                setTimeout(() => executeCommand(item.command), index * 1000);
-            });
+            
+            for (const [index, item] of presets[presetName].entries()) {
+                setTimeout(() => {
+                    executeCommand(item.command)
+                }, index * 500);
+            }
         }
         
         function shareProject() { /* Logic for sharing can be added here */ }
         function toggleFullscreen() {
-            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-            else document.exitFullscreen();
+            try {
+                if (!document.fullscreenElement) {
+                    if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen();
+                    } else {
+                         addOutput('❌ Fullscreen API is not supported in this browser.', 'error');
+                    }
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            } catch (error) {
+                console.error("Fullscreen error:", error);
+                addOutput('⚠️ Fullscreen mode is not permitted in this view.', 'warning');
+            }
         }
 
         function updateTimeDisplay() {
@@ -1181,8 +1517,8 @@ Example Response for "stop the drums":
         window.addEventListener('load', () => {
             detectMobileDevice();
             setInterval(updateTimeDisplay, 1000);
-            addOutput('🎵 Bulletproof Audio Engine v5.0 Ready!', 'system');
-            addOutput('🧠 AI is now context-aware. Try building up a track!', 'ai');
+            addOutput('🎵 Bulletproof Audio Engine v5.1 Ready!', 'system');
+            addOutput('🧠 AI Brain Upgraded & New Instruments Added!', 'system');
             addOutput('🚀 Click "Enable Professional Audio" to begin!', 'warning');
         });
         
@@ -1192,3 +1528,4 @@ Example Response for "stop the drums":
     </script>
 </body>
 </html>
+
