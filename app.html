@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Music Co-pilot - Evolution v5.3</title>
+    <title>AI Music Co-pilot - Evolution v5.4</title>
     <style>
         * {
             margin: 0;
@@ -610,7 +610,7 @@
     <div class="app-container">
         <header class="header">
             <a href="index.html" class="logo">
-                🎵 AI Music Co-pilot <span class="version-tag">Evolution v5.3</span>
+                🎵 AI Music Co-pilot <span class="version-tag">Evolution v5.4</span>
             </a>
             <div class="header-controls">
                 <div class="status-indicator">
@@ -648,7 +648,7 @@
         <main class="terminal-container">
             <div class="terminal">
                 <div class="terminal-header">
-                    <div class="terminal-title">Evolution Audio Engine v5.3</div>
+                    <div class="terminal-title">Evolution Audio Engine v5.4</div>
                     <div class="terminal-stats">
                         <span>BPM: <span id="bpmDisplay">120</span></span>
                         <span>⏱️ <span id="timeDisplay">00:00</span></span>
@@ -710,9 +710,8 @@
     </div>
 
     <script>
-        // ===== EVOLUTION AUDIO ENGINE v5.3 =====
-        // "Producer Brain" Upgrade: AI can now return multiple commands.
-        // App now has a sequencer and metadata parser for robust, multi-layer generation.
+        // ===== EVOLUTION AUDIO ENGINE v5.4 =====
+        // CSS syntax fixes and code validation.
         
         let audioContext = null;
         let masterGain = null;
@@ -1137,7 +1136,6 @@ ${getMusicStateSummary()}
             }
         }
         
-        // NEW: SEQUENCER to handle multiple commands
         async function executeCommand(command) {
             const commandLayers = await callGeminiAPI(command);
             if (commandLayers && commandLayers.length > 0) {
@@ -1148,12 +1146,11 @@ ${getMusicStateSummary()}
                              executeDirectCommand(cmd, metadata.player);
                              updateMusicState(metadata);
                         }
-                    }, index * 200); // Stagger command execution
+                    }, index * 200);
                 }
             }
         }
         
-        // NEW: METADATA PARSER
         function parseCommandForMetadata(command, player) {
             if (typeof command !== 'string') return null;
             
@@ -1190,7 +1187,10 @@ ${getMusicStateSummary()}
             }
             try {
                 const metadata = parseCommandForMetadata(command, player);
-                if (!metadata) return;
+                if (!metadata) {
+                    addOutput(`🤔 AI suggested a command I don't understand: "${command}"`, 'warning');
+                    return;
+                };
 
                 if (metadata.action === 'stop') {
                     stopPlayer(metadata.player);
@@ -1263,7 +1263,7 @@ ${getMusicStateSummary()}
                 if (!musicState[player] || musicState[player].status !== 'playing') return;
                 
                 const note = notes[currentNote % notes.length];
-                const frequency = 440 * Math.pow(2, (note - 9 + (config.octave - 4) * 12) / 12);
+                const frequency = 440 * Math.pow(2, (note + 3 + (config.octave - 4) * 12) / 12);
                 
                 createBulletproofOscillator(frequency, config.preset, noteDuration * 0.8);
                 
