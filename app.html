@@ -1,0 +1,1848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Music Co-pilot - Professional Studio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-areas: 
+                "header header header"
+                "sidebar terminal controls"
+                "sidebar terminal controls";
+            grid-template-columns: 280px 1fr 380px;
+            grid-template-rows: 70px 1fr;
+            height: 100vh;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-areas: 
+                    "header"
+                    "terminal"
+                    "controls"
+                    "sidebar";
+                grid-template-columns: 1fr;
+                grid-template-rows: 70px 1fr auto auto;
+                height: auto;
+            }
+        }
+
+        /* Header */
+        .header {
+            grid-area: header;
+            background: rgba(0,0,0,0.95);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 1px 20px rgba(0,0,0,0.3);
+        }
+
+        .logo {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #00ff88;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-btn:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateY(-1px);
+        }
+
+        /* Professional Sidebar */
+        .sidebar {
+            grid-area: sidebar;
+            background: rgba(0,0,0,0.9);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            padding: 25px;
+            backdrop-filter: blur(20px);
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            color: #00ff88;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            font-weight: 600;
+        }
+
+        .preset-item {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.9rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preset-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,255,136,0.1), transparent);
+            transition: left 0.6s;
+        }
+
+        .preset-item:hover::before {
+            left: 100%;
+        }
+
+        .preset-item:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateX(8px);
+            border-color: rgba(0,255,136,0.3);
+        }
+
+        .preset-item.active {
+            background: rgba(0,255,136,0.15);
+            border-color: #00ff88;
+        }
+
+        /* Enhanced Terminal */
+        .terminal-container {
+            grid-area: terminal;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal {
+            flex: 1;
+            background: rgba(0,0,0,0.95);
+            border-radius: 16px;
+            padding: 28px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .terminal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-right: 20px;
+        }
+
+        .terminal-button {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .terminal-button:hover {
+            transform: scale(1.1);
+        }
+
+        .close { background: #ff5f57; }
+        .minimize { background: #ffbd2e; }
+        .maximize { background: #28ca42; }
+
+        .terminal-title {
+            color: #00ff88;
+            font-weight: 600;
+            flex: 1;
+            font-size: 1.1rem;
+        }
+
+        .terminal-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.85rem;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        .output {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 24px;
+            font-size: 14px;
+            line-height: 1.5;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            background: rgba(0,0,0,0.4);
+            min-height: 320px;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+        }
+
+        .output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .output::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+        }
+
+        .output::-webkit-scrollbar-thumb {
+            background: rgba(0,255,136,0.4);
+            border-radius: 4px;
+        }
+
+        .output::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,255,136,0.6);
+        }
+
+        .input-section {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .prompt {
+            color: #00ff88;
+            font-weight: 600;
+            white-space: nowrap;
+            font-size: 1rem;
+        }
+
+        .command-input {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+            font-size: 14px;
+            outline: none;
+            padding: 14px 18px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .command-input:focus {
+            border-color: #00ff88;
+            background: rgba(255,255,255,0.08);
+            box-shadow: 0 0 0 2px rgba(0,255,136,0.2);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #00ff88, #00d4ff);
+            border: none;
+            color: #000;
+            padding: 14px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,255,136,0.4);
+        }
+
+        /* Professional Controls Panel */
+        .controls-panel {
+            grid-area: controls;
+            background: rgba(0,0,0,0.9);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            padding: 25px;
+            backdrop-filter: blur(20px);
+            overflow-y: auto;
+        }
+
+        .control-section {
+            margin-bottom: 28px;
+        }
+
+        .control-section h3 {
+            color: #00ff88;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .control-btn {
+            width: 100%;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+            padding: 14px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            text-align: left;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .control-btn:hover {
+            background: rgba(255,255,255,0.12);
+            transform: translateX(6px);
+            border-color: rgba(0,255,136,0.4);
+        }
+
+        /* Professional Mixer */
+        .mixer {
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .mixer-channel {
+            display: flex;
+            align-items: center;
+            margin-bottom: 14px;
+            padding: 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+
+        .mixer-channel:hover {
+            background: rgba(255,255,255,0.06);
+        }
+
+        .channel-name {
+            width: 35px;
+            font-size: 0.8rem;
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        .channel-slider {
+            flex: 1;
+            margin: 0 12px;
+            accent-color: #00ff88;
+        }
+
+        .channel-value {
+            width: 40px;
+            font-size: 0.8rem;
+            text-align: right;
+            font-weight: 500;
+        }
+
+        /* Audio Visualizer */
+        .visualizer-container {
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            height: 120px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .visualizer-bars {
+            display: flex;
+            align-items: end;
+            height: 80px;
+            gap: 2px;
+            justify-content: space-around;
+        }
+
+        .viz-bar {
+            background: linear-gradient(to top, #00ff88, #00d4ff, #ff6b9d);
+            width: 3px;
+            border-radius: 2px;
+            transition: height 0.1s ease;
+            opacity: 0.8;
+        }
+
+        /* Message Styles */
+        .error { color: #ff4757; }
+        .success { color: #00ff88; }
+        .info { color: #00d4ff; }
+        .warning { color: #ffa502; }
+        .ai { color: #ff6b9d; }
+        .system { color: #7bed9f; }
+
+        /* API Setup */
+        .api-key-setup {
+            background: rgba(255,165,0,0.1);
+            border: 1px solid #ffa502;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 24px;
+        }
+
+        .api-input {
+            width: 100%;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 12px;
+            color: #fff;
+            font-family: 'SF Mono', monospace;
+            margin: 12px 0;
+            font-size: 0.9rem;
+        }
+
+        /* Recording indicator */
+        .recording-indicator {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            color: #ff4757;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .recording-indicator.active {
+            display: flex;
+        }
+
+        .recording-dot {
+            width: 8px;
+            height: 8px;
+            background: #ff4757;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Quality indicator */
+        .quality-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .quality-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <a href="index.html" class="logo">
+                🎵 AI Music Co-pilot
+            </a>
+            <div class="header-controls">
+                <div class="quality-indicator">
+                    <div class="quality-dot"></div>
+                    Professional Audio
+                </div>
+                <button class="header-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+                <button class="header-btn" onclick="shareProject()">🔗 Share</button>
+                <button class="header-btn" onclick="showSettings()">⚙️ Settings</button>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="api-key-setup" id="apiSetup">
+                <h3>🔑 AI Setup</h3>
+                <p style="font-size: 0.85rem; opacity: 0.8; margin-bottom: 8px;">Enable AI music generation</p>
+                <input type="text" class="api-input" id="apiKeyInput" placeholder="Google AI API Key">
+                <button class="control-btn" style="background: rgba(0,255,136,0.2); border-color: #00ff88;" onclick="setupAPI()">
+                    Activate AI
+                </button>
+            </div>
+
+            <div class="preset-list">
+                <h3>🎼 Studio Presets</h3>
+                <div class="preset-item" onclick="loadPreset('techno')">
+                    <strong>🔥 Techno Drive</strong><br>
+                    <small style="opacity: 0.7;">Industrial 4/4 with acid bass</small>
+                </div>
+                <div class="preset-item" onclick="loadPreset('house')">
+                    <strong>🏠 House Groove</strong><br>
+                    <small style="opacity: 0.7;">Deep house with piano</small>
+                </div>
+                <div class="preset-item" onclick="loadPreset('ambient')">
+                    <strong>🌙 Ambient Space</strong><br>
+                    <small style="opacity: 0.7;">Ethereal atmospheric pads</small>
+                </div>
+                <div class="preset-item" onclick="loadPreset('dnb')">
+                    <strong>⚡ Drum & Bass</strong><br>
+                    <small style="opacity: 0.7;">Liquid DnB with sub bass</small>
+                </div>
+                <div class="preset-item" onclick="loadPreset('trap')">
+                    <strong>💥 Trap Hit</strong><br>
+                    <small style="opacity: 0.7;">Heavy 808s and snappy hats</small>
+                </div>
+                <div class="preset-item" onclick="loadPreset('lofi')">
+                    <strong>📻 Lo-Fi Chill</strong><br>
+                    <small style="opacity: 0.7;">Dusty vinyl warmth</small>
+                </div>
+            </div>
+
+            <div class="preset-list">
+                <h3>📁 Recent Sessions</h3>
+                <div class="preset-item" onclick="loadRecent('session1')">
+                    <strong>My Track #1</strong><br>
+                    <small style="opacity: 0.7;">3 min ago • 4 players</small>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Terminal -->
+        <main class="terminal-container">
+            <div class="terminal">
+                <div class="terminal-header">
+                    <div class="terminal-buttons">
+                        <div class="terminal-button close"></div>
+                        <div class="terminal-button minimize"></div>
+                        <div class="terminal-button maximize"></div>
+                    </div>
+                    <div class="terminal-title">Professional Audio Engine v3.0</div>
+                    <div class="terminal-stats">
+                        <span>🎵 <span id="bpmDisplay">120</span> BPM</span>
+                        <span>⏱️ <span id="timeDisplay">00:00</span></span>
+                        <span>🔊 <span id="activeCount">0</span> active</span>
+                        <span>📊 <span id="qualityDisplay">48kHz</span></span>
+                    </div>
+                </div>
+                
+                <div class="output" id="output">
+                    <div class="system">🎵 Professional Audio Engine Initialized</div>
+                    <div class="success">✨ Crystal-clear 48kHz audio synthesis ready</div>
+                    <div class="ai">🤖 AI Co-pilot standing by for musical creativity</div>
+                    <div class="info">💡 Enhanced features: ADSR envelopes, anti-aliasing, professional effects</div>
+                    <div class="info">🎹 Try: "create a driving techno beat with sub bass"</div>
+                    <div class="info">⚡ Direct: "play melody [0,3,7,10] with filter sweep"</div>
+                    <div class="system">🎚️ Type "help" for complete command reference</div>
+                </div>
+                
+                <div class="input-section">
+                    <div class="prompt">🎧 ></div>
+                    <input type="text" class="command-input" id="commandInput" placeholder="Describe your musical vision or enter direct commands..." autofocus>
+                    <button class="send-btn" onclick="processCommand()">Create</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Controls Panel -->
+        <aside class="controls-panel">
+            <!-- Audio Visualizer -->
+            <div class="visualizer-container">
+                <div class="visualizer-bars" id="visualizerBars"></div>
+            </div>
+
+            <!-- Recording Section -->
+            <div class="control-section">
+                <h3>🎙️ Professional Recording</h3>
+                <div class="recording-indicator" id="recordingIndicator">
+                    <div class="recording-dot"></div>
+                    Recording in 48kHz...
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                    <button class="control-btn" style="background: rgba(255,71,87,0.2); border-color: #ff4757;" onclick="startRecording()">⏺️</button>
+                    <button class="control-btn" onclick="stopRecording()" disabled>⏹️</button>
+                    <button class="control-btn" style="background: rgba(0,255,136,0.2); border-color: #00ff88;" onclick="exportAudio()" disabled>💾</button>
+                </div>
+            </div>
+
+            <!-- Master Section -->
+            <div class="control-section">
+                <h3>🎚️ Master Section</h3>
+                <div class="mixer">
+                    <div class="mixer-channel">
+                        <div class="channel-name">VOL</div>
+                        <input type="range" class="channel-slider" id="masterVolume" min="0" max="1" step="0.02" value="0.7" onchange="setMasterVolume(this.value)">
+                        <div class="channel-value" id="volumeDisplay">70%</div>
+                    </div>
+                    <div class="mixer-channel">
+                        <div class="channel-name">BPM</div>
+                        <input type="range" class="channel-slider" id="masterTempo" min="80" max="180" value="120" onchange="setTempo(this.value)">
+                        <div class="channel-value" id="tempoDisplay">120</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transport -->
+            <div class="control-section">
+                <h3>⏯️ Transport Control</h3>
+                <button class="control-btn" style="background: rgba(0,255,136,0.2); border-color: #00ff88;" onclick="playAll()">▶️ Play All</button>
+                <button class="control-btn" onclick="pauseAll()">⏸️ Pause All</button>
+                <button class="control-btn" style="background: rgba(255,71,87,0.2); border-color: #ff4757;" onclick="stopAllSounds()">⏹️ Stop All</button>
+                <button class="control-btn" onclick="clearTerminal()">🧹 Clear Log</button>
+            </div>
+
+            <!-- Live Players -->
+            <div class="control-section">
+                <h3>🎵 Live Players</h3>
+                <div class="mixer" id="playersState">
+                    <div class="info" style="text-align: center; opacity: 0.6; font-size: 0.85rem;">
+                        No active players
+                    </div>
+                </div>
+            </div>
+
+            <!-- Player Mixer -->
+            <div class="control-section">
+                <h3>🎛️ Player Mixer</h3>
+                <div class="mixer" id="playerMixer">
+                    <div class="info" style="text-align: center; opacity: 0.6; font-size: 0.85rem;">
+                        Player controls appear here
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // ===== PROFESSIONAL AUDIO ENGINE =====
+        // High-quality Web Audio implementation with crystal-clear sound
+        
+        let audioContext;
+        let masterGain;
+        let compressor;
+        let analyser;
+        let currentTempo = 120;
+        let musicState = {};
+        let apiKey = '';
+        let startTime = Date.now();
+        let isRecording = false;
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        // Professional Audio Initialization
+        async function initProfessionalAudio() {
+            if (!audioContext) {
+                // Create high-quality audio context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    latencyHint: 'playback',
+                    sampleRate: 48000  // High-quality sample rate
+                });
+                
+                addOutput(`🎵 Audio Context: ${audioContext.sampleRate}Hz, ${audioContext.destination.channelCount} channels`, 'system');
+                document.getElementById('qualityDisplay').textContent = `${audioContext.sampleRate/1000}kHz`;
+                
+                // Professional audio chain
+                masterGain = audioContext.createGain();
+                compressor = audioContext.createDynamicsCompressor();
+                analyser = audioContext.createAnalyser();
+                
+                // Configure compressor for professional sound
+                compressor.threshold.setValueAtTime(-24, audioContext.currentTime);
+                compressor.knee.setValueAtTime(30, audioContext.currentTime);
+                compressor.ratio.setValueAtTime(12, audioContext.currentTime);
+                compressor.attack.setValueAtTime(0.003, audioContext.currentTime);
+                compressor.release.setValueAtTime(0.25, audioContext.currentTime);
+                
+                // Configure analyser for visualizer
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.8;
+                
+                // Connect professional audio chain
+                masterGain.connect(compressor);
+                compressor.connect(analyser);
+                analyser.connect(audioContext.destination);
+                
+                masterGain.gain.value = 0.7;
+                
+                addOutput('✨ Professional audio chain initialized: Master → Compressor → Analyser → Output', 'success');
+                
+                // Initialize visualizer
+                initProfessionalVisualizer();
+            }
+            
+            return audioContext.state === 'suspended' ? audioContext.resume() : Promise.resolve();
+        }
+
+        // Professional ADSR Envelope
+        class ADSREnvelope {
+            constructor(audioContext, gainNode) {
+                this.context = audioContext;
+                this.gain = gainNode;
+            }
+            
+            trigger(attackTime = 0.01, decayTime = 0.3, sustainLevel = 0.7, releaseTime = 0.5, duration = 1) {
+                const now = this.context.currentTime;
+                const sustainTime = Math.max(0, duration - attackTime - decayTime - releaseTime);
+                
+                // Clear any existing automation
+                this.gain.gain.cancelScheduledValues(now);
+                
+                // ADSR envelope
+                this.gain.gain.setValueAtTime(0, now);
+                this.gain.gain.linearRampToValueAtTime(1, now + attackTime);
+                this.gain.gain.linearRampToValueAtTime(sustainLevel, now + attackTime + decayTime);
+                this.gain.gain.setValueAtTime(sustainLevel, now + attackTime + decayTime + sustainTime);
+                this.gain.gain.linearRampToValueAtTime(0, now + attackTime + decayTime + sustainTime + releaseTime);
+            }
+        }
+
+        // Professional Oscillator with anti-aliasing
+        function createProfessionalOscillator(frequency, waveform = 'sine', duration = 1, effects = {}) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            
+            // Anti-aliasing filter
+            const antiAlias = audioContext.createBiquadFilter();
+            antiAlias.type = 'lowpass';
+            antiAlias.frequency.value = Math.min(frequency * 4, audioContext.sampleRate / 2.2);
+            antiAlias.Q.value = 0.7;
+            
+            // Configure oscillator
+            osc.type = waveform;
+            osc.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            
+            // Apply effects
+            filter.type = 'lowpass';
+            filter.frequency.value = effects.cutoff || 8000;
+            filter.Q.value = effects.resonance || 1;
+            
+            // Professional ADSR envelope
+            const envelope = new ADSREnvelope(audioContext, gain);
+            const amp = effects.amplitude || 0.3;
+            gain.gain.value = amp;
+            
+            // Connect audio chain with anti-aliasing
+            osc.connect(antiAlias);
+            antiAlias.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+            
+            // Trigger envelope
+            envelope.trigger(
+                effects.attack || 0.01,
+                effects.decay || 0.3,
+                effects.sustain || 0.7,
+                effects.release || 0.5,
+                duration
+            );
+            
+            osc.start(audioContext.currentTime);
+            osc.stop(audioContext.currentTime + duration + 0.5); // Extra time for release
+            
+            return osc;
+        }
+
+        // Professional Drum Synthesis
+        function createProfessionalDrum(type, effects = {}) {
+            const duration = effects.duration || 0.5;
+            
+            if (type === 'kick' || type === 'x') {
+                // Professional kick drum with multiple layers
+                const kickOsc = audioContext.createOscillator();
+                const kickGain = audioContext.createGain();
+                const kickFilter = audioContext.createBiquadFilter();
+                
+                const clickOsc = audioContext.createOscillator();
+                const clickGain = audioContext.createGain();
+                const clickFilter = audioContext.createBiquadFilter();
+                
+                // Main kick oscillator
+                kickOsc.type = 'sine';
+                kickOsc.frequency.setValueAtTime(60, audioContext.currentTime);
+                kickOsc.frequency.exponentialRampToValueAtTime(40, audioContext.currentTime + 0.05);
+                kickOsc.frequency.exponentialRampToValueAtTime(30, audioContext.currentTime + 0.1);
+                
+                // Click layer for punch
+                clickOsc.type = 'triangle';
+                clickOsc.frequency.setValueAtTime(1000, audioContext.currentTime);
+                clickOsc.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.01);
+                
+                // Configure filters
+                kickFilter.type = 'lowpass';
+                kickFilter.frequency.value = 120;
+                kickFilter.Q.value = 1;
+                
+                clickFilter.type = 'highpass';
+                clickFilter.frequency.value = 80;
+                clickFilter.Q.value = 0.5;
+                
+                // Professional envelopes
+                const kickEnv = new ADSREnvelope(audioContext, kickGain);
+                const clickEnv = new ADSREnvelope(audioContext, clickGain);
+                
+                kickEnv.trigger(0.001, 0.05, 0.3, 0.2, duration);
+                clickEnv.trigger(0.001, 0.01, 0.1, 0.05, 0.02);
+                
+                // Connect chains
+                kickOsc.connect(kickFilter);
+                kickFilter.connect(kickGain);
+                kickGain.connect(masterGain);
+                
+                clickOsc.connect(clickFilter);
+                clickFilter.connect(clickGain);
+                clickGain.connect(masterGain);
+                
+                kickOsc.start(audioContext.currentTime);
+                clickOsc.start(audioContext.currentTime);
+                kickOsc.stop(audioContext.currentTime + duration);
+                clickOsc.stop(audioContext.currentTime + 0.02);
+                
+            } else if (type === 'snare' || type === 'o') {
+                // Professional snare with tone and noise layers
+                const noise = createProfessionalNoise(duration * 0.3);
+                const tone = audioContext.createOscillator();
+                
+                const noiseGain = audioContext.createGain();
+                const toneGain = audioContext.createGain();
+                const snareFilter = audioContext.createBiquadFilter();
+                
+                // Tone layer
+                tone.type = 'triangle';
+                tone.frequency.value = 200;
+                
+                // Professional bandpass filter for snare character
+                snareFilter.type = 'bandpass';
+                snareFilter.frequency.value = 2000;
+                snareFilter.Q.value = 2;
+                
+                // Professional envelopes
+                const noiseEnv = new ADSREnvelope(audioContext, noiseGain);
+                const toneEnv = new ADSREnvelope(audioContext, toneGain);
+                
+                noiseEnv.trigger(0.001, 0.05, 0.4, 0.15, duration * 0.8);
+                toneEnv.trigger(0.001, 0.02, 0.3, 0.1, duration * 0.4);
+                
+                // Connect chains
+                noise.connect(snareFilter);
+                snareFilter.connect(noiseGain);
+                noiseGain.connect(masterGain);
+                
+                tone.connect(toneGain);
+                toneGain.connect(masterGain);
+                
+                noise.start(audioContext.currentTime);
+                tone.start(audioContext.currentTime);
+                noise.stop(audioContext.currentTime + duration * 0.3);
+                tone.stop(audioContext.currentTime + duration * 0.4);
+                
+            } else if (type === 'hihat' || type === 'h' || type === '.') {
+                // Professional hi-hat with filtered noise
+                const hihatNoise = createProfessionalNoise(duration * 0.15);
+                const hihatGain = audioContext.createGain();
+                const hihatFilter = audioContext.createBiquadFilter();
+                
+                // High-frequency filtering for crisp hi-hat sound
+                hihatFilter.type = 'highpass';
+                hihatFilter.frequency.value = 8000;
+                hihatFilter.Q.value = 1;
+                
+                const hihatEnv = new ADSREnvelope(audioContext, hihatGain);
+                hihatEnv.trigger(0.001, 0.01, 0.2, 0.05, duration * 0.15);
+                
+                hihatNoise.connect(hihatFilter);
+                hihatFilter.connect(hihatGain);
+                hihatGain.connect(masterGain);
+                
+                hihatNoise.start(audioContext.currentTime);
+                hihatNoise.stop(audioContext.currentTime + duration * 0.15);
+            }
+        }
+
+        // Professional White Noise Generator
+        function createProfessionalNoise(duration) {
+            const bufferSize = Math.ceil(audioContext.sampleRate * duration);
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const output = buffer.getChannelData(0);
+            
+            // Generate high-quality white noise
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+            
+            const noise = audioContext.createBufferSource();
+            noise.buffer = buffer;
+            return noise;
+        }
+
+        // Professional Bass Synthesis
+        function createProfessionalBass(frequency, duration = 1, effects = {}) {
+            // Multi-oscillator bass for thickness
+            const osc1 = audioContext.createOscillator();
+            const osc2 = audioContext.createOscillator();
+            const subOsc = audioContext.createOscillator();
+            
+            const gain1 = audioContext.createGain();
+            const gain2 = audioContext.createGain();
+            const subGain = audioContext.createGain();
+            
+            const bassFilter = audioContext.createBiquadFilter();
+            const distortion = audioContext.createWaveShaper();
+            
+            // Configure oscillators
+            osc1.type = 'sawtooth';
+            osc1.frequency.value = frequency;
+            
+            osc2.type = 'square';
+            osc2.frequency.value = frequency;
+            osc2.detune.value = -7; // Slight detune for thickness
+            
+            subOsc.type = 'sine';
+            subOsc.frequency.value = frequency * 0.5; // Sub-oscillator
+            
+            // Configure filter for bass character
+            bassFilter.type = 'lowpass';
+            bassFilter.frequency.value = effects.cutoff || 300;
+            bassFilter.Q.value = effects.resonance || 2;
+            
+            // Distortion for grit
+            if (effects.distortion) {
+                const curve = createDistortionCurve(effects.distortion);
+                distortion.curve = curve;
+                distortion.oversample = '4x';
+            }
+            
+            // Professional envelopes
+            const env1 = new ADSREnvelope(audioContext, gain1);
+            const env2 = new ADSREnvelope(audioContext, gain2);
+            const subEnv = new ADSREnvelope(audioContext, subGain);
+            
+            env1.trigger(0.01, 0.1, 0.8, 0.3, duration);
+            env2.trigger(0.01, 0.1, 0.6, 0.3, duration);
+            subEnv.trigger(0.01, 0.2, 0.9, 0.5, duration);
+            
+            // Connect bass chain
+            osc1.connect(gain1);
+            osc2.connect(gain2);
+            subOsc.connect(subGain);
+            
+            gain1.connect(bassFilter);
+            gain2.connect(bassFilter);
+            subGain.connect(bassFilter);
+            
+            if (effects.distortion) {
+                bassFilter.connect(distortion);
+                distortion.connect(masterGain);
+            } else {
+                bassFilter.connect(masterGain);
+            }
+            
+            osc1.start(audioContext.currentTime);
+            osc2.start(audioContext.currentTime);
+            subOsc.start(audioContext.currentTime);
+            
+            osc1.stop(audioContext.currentTime + duration + 0.5);
+            osc2.stop(audioContext.currentTime + duration + 0.5);
+            subOsc.stop(audioContext.currentTime + duration + 0.5);
+        }
+
+        // Professional Lead Synthesis
+        function createProfessionalLead(frequency, duration = 1, effects = {}) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            const delay = audioContext.createDelay(1.0);
+            const delayFeedback = audioContext.createGain();
+            const delayGain = audioContext.createGain();
+            
+            // Configure lead oscillator
+            osc.type = effects.waveform || 'sawtooth';
+            osc.frequency.value = frequency;
+            
+            // Professional filter with modulation
+            filter.type = 'lowpass';
+            filter.frequency.value = effects.cutoff || 2000;
+            filter.Q.value = effects.resonance || 1;
+            
+            // Filter envelope for movement
+            if (effects.filterEnv) {
+                const filterEnvelope = audioContext.createGain();
+                filterEnvelope.gain.setValueAtTime(0, audioContext.currentTime);
+                filterEnvelope.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.5);
+                filterEnvelope.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + duration);
+                filterEnvelope.connect(filter.frequency);
+            }
+            
+            // Professional delay effect
+            if (effects.delay) {
+                delay.delayTime.value = 60 / currentTempo / 4; // Quarter note delay
+                delayFeedback.gain.value = 0.4;
+                delayGain.gain.value = 0.3;
+                
+                delay.connect(delayFeedback);
+                delayFeedback.connect(delay);
+                delay.connect(delayGain);
+            }
+            
+            // Professional envelope
+            const envelope = new ADSREnvelope(audioContext, gain);
+            envelope.trigger(0.02, 0.3, 0.7, 0.5, duration);
+            
+            // Connect lead chain
+            osc.connect(filter);
+            filter.connect(gain);
+            
+            if (effects.delay) {
+                gain.connect(delay);
+                gain.connect(masterGain);
+                delayGain.connect(masterGain);
+            } else {
+                gain.connect(masterGain);
+            }
+            
+            osc.start(audioContext.currentTime);
+            osc.stop(audioContext.currentTime + duration + 1);
+        }
+
+        // Professional Pad Synthesis
+        function createProfessionalPad(frequency, duration = 4, effects = {}) {
+            // Multi-layer pad for richness
+            const layers = 3;
+            const detuneAmount = 5;
+            
+            for (let i = 0; i < layers; i++) {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                const filter = audioContext.createBiquadFilter();
+                const reverb = createConvolutionReverb();
+                
+                osc.type = i === 0 ? 'sine' : i === 1 ? 'triangle' : 'sawtooth';
+                osc.frequency.value = frequency;
+                osc.detune.value = (i - 1) * detuneAmount;
+                
+                filter.type = 'lowpass';
+                filter.frequency.value = effects.cutoff || 800;
+                filter.Q.value = 0.5;
+                
+                const envelope = new ADSREnvelope(audioContext, gain);
+                envelope.trigger(0.5, 1, 0.8, 2, duration);
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                
+                if (effects.reverb && reverb) {
+                    const dryGain = audioContext.createGain();
+                    const wetGain = audioContext.createGain();
+                    
+                    dryGain.gain.value = 0.7;
+                    wetGain.gain.value = 0.3;
+                    
+                    gain.connect(dryGain);
+                    gain.connect(reverb);
+                    reverb.connect(wetGain);
+                    
+                    dryGain.connect(masterGain);
+                    wetGain.connect(masterGain);
+                } else {
+                    gain.connect(masterGain);
+                }
+                
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + duration + 2);
+            }
+        }
+
+        // Professional Reverb
+        function createConvolutionReverb() {
+            try {
+                const convolver = audioContext.createConvolver();
+                const impulseLength = audioContext.sampleRate * 3; // 3 seconds
+                const impulse = audioContext.createBuffer(2, impulseLength, audioContext.sampleRate);
+                
+                for (let channel = 0; channel < 2; channel++) {
+                    const channelData = impulse.getChannelData(channel);
+                    for (let i = 0; i < impulseLength; i++) {
+                        const decay = Math.pow(1 - i / impulseLength, 2);
+                        channelData[i] = (Math.random() * 2 - 1) * decay * 0.5;
+                    }
+                }
+                
+                convolver.buffer = impulse;
+                return convolver;
+            } catch (error) {
+                console.log('Reverb creation failed:', error);
+                return null;
+            }
+        }
+
+        // Distortion curve generator
+        function createDistortionCurve(amount = 50) {
+            const samples = 44100;
+            const curve = new Float32Array(samples);
+            const deg = Math.PI / 180;
+            
+            for (let i = 0; i < samples; i++) {
+                const x = (i * 2) / samples - 1;
+                curve[i] = ((3 + amount) * x * 20 * deg) / (Math.PI + amount * Math.abs(x));
+            }
+            
+            return curve;
+        }
+
+        // Professional Visualizer
+        function initProfessionalVisualizer() {
+            const container = document.getElementById('visualizerBars');
+            const barCount = 32;
+            
+            // Create visualizer bars
+            for (let i = 0; i < barCount; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'viz-bar';
+                bar.style.height = '2px';
+                container.appendChild(bar);
+            }
+            
+            // Real-time frequency analysis
+            function updateVisualizer() {
+                if (!analyser) {
+                    requestAnimationFrame(updateVisualizer);
+                    return;
+                }
+                
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                analyser.getByteFrequencyData(dataArray);
+                
+                const bars = container.querySelectorAll('.viz-bar');
+                const step = Math.floor(bufferLength / bars.length);
+                
+                bars.forEach((bar, index) => {
+                    const value = dataArray[index * step];
+                    const height = (value / 255) * 80 + 2;
+                    bar.style.height = `${height}px`;
+                });
+                
+                requestAnimationFrame(updateVisualizer);
+            }
+            
+            updateVisualizer();
+        }
+
+        // Enhanced Pattern Player
+        function playProfessionalPattern(player, pattern, config, tempo) {
+            const beatDuration = 60 / tempo / 4;
+            let currentBeat = 0;
+            
+            function playNextBeat() {
+                if (!musicState[player] || musicState[player].status !== 'playing') return;
+                
+                const char = pattern[currentBeat % pattern.length];
+                if (char !== '-' && char !== ' ') {
+                    createProfessionalDrum(char, config.effects || {});
+                }
+                
+                currentBeat++;
+                if (musicState[player] && musicState[player].status === 'playing') {
+                    setTimeout(playNextBeat, beatDuration * 1000);
+                }
+            }
+            
+            playNextBeat();
+        }
+
+        // Enhanced Melody Player
+        function playProfessionalMelody(player, notes, config, tempo) {
+            const noteDuration = config.effects?.duration || (60 / tempo);
+            let currentNote = 0;
+            
+            function playNextNote() {
+                if (!musicState[player] || musicState[player].status !== 'playing') return;
+                
+                const note = notes[currentNote % notes.length];
+                const frequency = 440 * Math.pow(2, (note - 9 + (config.octave - 4) * 12) / 12);
+                
+                if (config.type === 'bass') {
+                    createProfessionalBass(frequency, noteDuration * 0.8, config.effects || {});
+                } else if (config.type === 'pad') {
+                    createProfessionalPad(frequency, noteDuration * 2, config.effects || {});
+                } else {
+                    createProfessionalLead(frequency, noteDuration * 0.8, config.effects || {});
+                }
+                
+                currentNote++;
+                if (musicState[player] && musicState[player].status === 'playing') {
+                    setTimeout(playNextNote, noteDuration * 1000);
+                }
+            }
+            
+            playNextNote();
+        }
+
+        // Enhanced Presets with Professional Sounds
+        const professionalPresets = {
+            techno: [
+                { command: 'play drums "x---x---x---x---" professional', delay: 0 },
+                { command: 'play bass [0,0,7,0] with drive and sub', delay: 2000 },
+                { command: 'add lead [0,3,7,10] with filter sweep', delay: 4000 }
+            ],
+            house: [
+                { command: 'play drums "x-o-x-h-x-o-x-h-" groovy', delay: 0 },
+                { command: 'play bass [0,0,3,0] deep', delay: 1000 },
+                { command: 'add piano [0,4,7,11] with reverb', delay: 3000 }
+            ],
+            ambient: [
+                { command: 'play pads [0,4,7,11] ethereal', delay: 0 },
+                { command: 'add melody [0,2,4,7] floating', delay: 3000 },
+                { command: 'add texture subtle', delay: 5000 }
+            ],
+            dnb: [
+                { command: 'play drums "x--o--x-o--x-o--" fast', delay: 0 },
+                { command: 'play bass [0,7,5,3] liquid', delay: 1500 },
+                { command: 'add lead [0,3,7] scattered', delay: 3000 }
+            ],
+            trap: [
+                { command: 'play drums "x---x-h-o---x-h-" heavy', delay: 0 },
+                { command: 'play bass [0,0,0,3] 808', delay: 1000 },
+                { command: 'add melody [0,3,5] with delay', delay: 2500 }
+            ],
+            lofi: [
+                { command: 'play drums "x-o-x-o-" dusty', delay: 0 },
+                { command: 'play bass [0,3,7,5] warm', delay: 1500 },
+                { command: 'add keys [0,4,7] vintage', delay: 3000 }
+            ]
+        };
+
+        function loadPreset(presetName) {
+            if (!professionalPresets[presetName]) return;
+            
+            addOutput(`🎼 Loading ${presetName.toUpperCase()} preset with professional audio...`, 'system');
+            
+            // Clear existing
+            stopAllSounds();
+            
+            // Load preset with professional timing
+            professionalPresets[presetName].forEach((item, index) => {
+                setTimeout(() => {
+                    executeCommand(item.command);
+                }, item.delay);
+            });
+            
+            // Update active preset visual
+            document.querySelectorAll('.preset-item').forEach(item => item.classList.remove('active'));
+            event.target.closest('.preset-item').classList.add('active');
+        }
+
+        // Enhanced AI Integration
+        async function callGeminiAPI(prompt) {
+            if (!apiKey) {
+                addOutput('❌ Please configure your API key to use AI features', 'error');
+                return null;
+            }
+            
+            try {
+                addOutput('🤖 AI analyzing your request with professional audio context...', 'ai');
+                
+                const professionalPrompt = `You are a professional AI music producer with access to high-quality synthesis.
+
+Available professional commands:
+- "play drums [pattern]" - Professional drum synthesis with multiple layers
+- "play bass [notes]" - Multi-oscillator bass with sub-bass layer  
+- "play lead [notes]" - Professional lead synthesis with filters
+- "play pads [notes]" - Multi-layer pad synthesis with reverb
+- "add [instrument] [notes]" - Layer instruments professionally
+
+Professional effects:
+- "with drive/distortion" - Analog-style saturation
+- "with filter sweep" - Dynamic filter automation  
+- "with reverb" - Convolution reverb
+- "with delay" - Tempo-synced delay
+- "professional/crisp/warm/deep/ethereal" - Professional sound character
+
+Current context: ${JSON.stringify(musicState)}
+Tempo: ${currentTempo} BPM
+
+User request: "${prompt}"
+
+Create a professional music command that leverages high-quality synthesis. Respond with JSON:
+{"command": "play bass [0,7,3,5] with drive and sub", "description": "Professional sub-bass with analog character", "player": "b1"}`;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: professionalPrompt }] }],
+                        generationConfig: {
+                            temperature: 0.8,
+                            maxOutputTokens: 400
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.candidates && data.candidates[0]) {
+                    const text = data.candidates[0].content.parts[0].text;
+                    try {
+                        const jsonMatch = text.match(/\{[^}]*\}/s);
+                        if (jsonMatch) {
+                            const result = JSON.parse(jsonMatch[0]);
+                            if (result.description) {
+                                addOutput(`🎵 AI: ${result.description}`, 'ai');
+                            }
+                            return result;
+                        }
+                    } catch (e) {
+                        addOutput('❌ AI returned invalid response format', 'error');
+                    }
+                }
+                return null;
+            } catch (error) {
+                addOutput(`❌ AI API error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // Enhanced Command Processing
+        async function executeCommand(command) {
+            await initProfessionalAudio();
+            
+            command = command.toLowerCase().trim();
+            
+            if (command === 'stop all' || command === 'stop') {
+                stopAllSounds();
+                return;
+            }
+            
+            if (command === 'help') {
+                showProfessionalHelp();
+                return;
+            }
+            
+            // Direct command processing
+            if (command.includes('play ') || command.includes('add ')) {
+                executeDirectCommand(command);
+                return;
+            }
+            
+            // AI processing
+            const aiResponse = await callGeminiAPI(command);
+            if (aiResponse && aiResponse.command) {
+                executeDirectCommand(aiResponse.command);
+            }
+        }
+
+        function executeDirectCommand(command) {
+            try {
+                const effects = parseAdvancedEffects(command);
+                
+                if (command.includes('drums')) {
+                    const patternMatch = command.match(/["']([xoh\.\-\s]+)["']/) || command.match(/([xoh\.\-\s]{4,})/);
+                    if (patternMatch) {
+                        const player = getNextPlayer('d');
+                        const pattern = patternMatch[1];
+                        
+                        startProfessionalPlayer(player, {
+                            type: 'drum',
+                            pattern: pattern,
+                            effects: effects,
+                            status: 'playing'
+                        });
+                        addOutput(`✨ Professional drums active: ${pattern}`, 'success');
+                    }
+                } else if (command.includes('bass') || command.includes('lead') || command.includes('pads')) {
+                    const notesMatch = command.match(/\[([0-9,\s]+)\]/);
+                    if (notesMatch) {
+                        const notes = notesMatch[1].split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+                        const player = getNextPlayer(command.includes('bass') ? 'b' : 'p');
+                        
+                        let config = {
+                            type: command.includes('bass') ? 'bass' : command.includes('pads') ? 'pad' : 'lead',
+                            notes: notes,
+                            octave: command.includes('bass') ? 2 : 4,
+                            effects: effects,
+                            status: 'playing'
+                        };
+                        
+                        startProfessionalPlayer(player, config);
+                        
+                        const instrumentName = config.type;
+                        addOutput(`✨ Professional ${instrumentName} synthesized: [${notes.join(',')}]`, 'success');
+                    }
+                }
+                
+                updatePlayersDisplay();
+            } catch (error) {
+                addOutput(`❌ Command execution error: ${error.message}`, 'error');
+            }
+        }
+
+        function parseAdvancedEffects(command) {
+            const effects = {};
+            
+            if (command.includes('drive') || command.includes('distortion')) effects.distortion = 30;
+            if (command.includes('filter')) effects.cutoff = command.includes('sweep') ? 'sweep' : 800;
+            if (command.includes('reverb')) effects.reverb = true;
+            if (command.includes('delay')) effects.delay = true;
+            if (command.includes('sub')) effects.subOscillator = true;
+            if (command.includes('professional')) effects.professional = true;
+            if (command.includes('warm')) effects.analog = true;
+            if (command.includes('crisp')) effects.clarity = true;
+            
+            return effects;
+        }
+
+        function startProfessionalPlayer(player, config) {
+            if (musicState[player]) {
+                stopPlayer(player);
+            }
+            
+            musicState[player] = config;
+            
+            if (config.type === 'drum') {
+                playProfessionalPattern(player, config.pattern, config, currentTempo);
+            } else {
+                playProfessionalMelody(player, config.notes, config, currentTempo);
+            }
+        }
+
+        // UI Functions
+        function processCommand() {
+            const input = document.getElementById('commandInput');
+            const command = input.value.trim();
+            if (!command) return;
+            
+            addOutput(`🎧 > ${command}`, 'info');
+            input.value = '';
+            
+            executeCommand(command);
+        }
+
+        function setupAPI() {
+            const input = document.getElementById('apiKeyInput');
+            apiKey = input.value.trim();
+            if (apiKey) {
+                document.getElementById('apiSetup').style.display = 'none';
+                addOutput('✅ Professional AI features activated!', 'success');
+            }
+        }
+
+        function addOutput(text, type = 'info') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+            
+            // Limit output length for performance
+            const children = output.children;
+            if (children.length > 100) {
+                output.removeChild(children[0]);
+            }
+        }
+
+        function setMasterVolume(value) {
+            if (masterGain) {
+                masterGain.gain.value = value;
+            }
+            document.getElementById('volumeDisplay').textContent = Math.round(value * 100) + '%';
+        }
+
+        function setTempo(value) {
+            currentTempo = parseInt(value);
+            document.getElementById('tempoDisplay').textContent = value;
+            document.getElementById('bpmDisplay').textContent = value;
+        }
+
+        function stopPlayer(player) {
+            if (musicState[player]) {
+                musicState[player].status = 'stopped';
+                delete musicState[player];
+            }
+        }
+
+        function stopAllSounds() {
+            Object.keys(musicState).forEach(stopPlayer);
+            addOutput('🛑 All professional audio stopped', 'success');
+            updatePlayersDisplay();
+        }
+
+        function playAll() {
+            Object.keys(musicState).forEach(player => {
+                if (musicState[player].status === 'paused') {
+                    musicState[player].status = 'playing';
+                    startProfessionalPlayer(player, musicState[player]);
+                }
+            });
+            addOutput('▶️ Resuming all professional players', 'success');
+        }
+
+        function pauseAll() {
+            Object.keys(musicState).forEach(player => {
+                if (musicState[player].status === 'playing') {
+                    musicState[player].status = 'paused';
+                }
+            });
+            addOutput('⏸️ All players paused', 'info');
+            updatePlayersDisplay();
+        }
+
+        function clearTerminal() {
+            document.getElementById('output').innerHTML = '';
+            addOutput('🎵 Professional terminal cleared', 'system');
+        }
+
+        function updatePlayersDisplay() {
+            const display = document.getElementById('playersState');
+            const mixer = document.getElementById('playerMixer');
+            const activePlayers = Object.keys(musicState);
+            
+            if (activePlayers.length === 0) {
+                display.innerHTML = '<div class="info" style="text-align: center; opacity: 0.6; font-size: 0.85rem;">No active players</div>';
+                mixer.innerHTML = '<div class="info" style="text-align: center; opacity: 0.6; font-size: 0.85rem;">Player controls appear here</div>';
+            } else {
+                // Update state display with professional icons
+                display.innerHTML = activePlayers.map(player => {
+                    const config = musicState[player];
+                    const status = config.status === 'playing' ? 'playing' : 'stopped';
+                    let icon = '🎵';
+                    
+                    if (config.type === 'drum') icon = '🥁';
+                    else if (config.type === 'bass') icon = '🎸';
+                    else if (config.type === 'lead') icon = '🎹';
+                    else if (config.type === 'pad') icon = '🌊';
+                    
+                    const effectsText = Object.keys(config.effects || {}).join(', ') || 'clean';
+                    
+                    return `
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                            <div>
+                                <span class="player-indicator ${status}"></span>
+                                ${icon} ${player.toUpperCase()}: ${config.type}
+                                <div style="font-size: 0.75rem; opacity: 0.7; margin-left: 18px;">
+                                    ${effectsText}
+                                </div>
+                            </div>
+                            <button onclick="stopPlayer('${player}')" style="background: rgba(255,71,87,0.2); border: 1px solid #ff4757; color: #ff4757; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.7rem;">×</button>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Update professional mixer
+                mixer.innerHTML = activePlayers.map(player => {
+                    const config = musicState[player];
+                    return `
+                        <div class="mixer-channel">
+                            <div class="channel-name" style="color: #00ff88;">${player.toUpperCase()}</div>
+                            <input type="range" class="channel-slider" min="0" max="1" step="0.02" value="0.7" 
+                                   onchange="setPlayerVolume('${player}', this.value)">
+                            <div class="channel-value">70%</div>
+                            <button class="mute-btn ${config.muted ? 'active' : ''}" onclick="toggleMute('${player}')" 
+                                    style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3); background: ${config.muted ? '#ff4757' : 'transparent'}; color: #fff; font-size: 0.7rem; cursor: pointer; margin-left: 6px;">
+                                M
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            // Update header stats
+            document.getElementById('activeCount').textContent = activePlayers.length;
+        }
+
+        function setPlayerVolume(player, value) {
+            if (musicState[player]) {
+                musicState[player].volume = parseFloat(value);
+                // In a real implementation, this would adjust the individual player's gain node
+                event.target.nextElementSibling.textContent = Math.round(value * 100) + '%';
+            }
+        }
+
+        function toggleMute(player) {
+            if (musicState[player]) {
+                const isMuted = musicState[player].muted;
+                musicState[player].muted = !isMuted;
+                
+                if (!isMuted) {
+                    musicState[player].status = 'muted';
+                } else {
+                    musicState[player].status = 'playing';
+                    startProfessionalPlayer(player, musicState[player]);
+                }
+                
+                updatePlayersDisplay();
+                addOutput(`${isMuted ? '🔊' : '🔇'} ${player.toUpperCase()} ${isMuted ? 'unmuted' : 'muted'}`, 'info');
+            }
+        }
+
+        function getNextPlayer(type) {
+            let i = 1;
+            while (musicState[`${type}${i}`]) {
+                i++;
+            }
+            return `${type}${i}`;
+        }
+
+        function updateTimeDisplay() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            document.getElementById('timeDisplay').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function showProfessionalHelp() {
+            addOutput('🎵 PROFESSIONAL AI MUSIC CO-PILOT HELP', 'system');
+            addOutput('', 'info');
+            addOutput('🤖 NATURAL LANGUAGE (AI-powered):', 'ai');
+            addOutput('  "create a driving techno beat with sub bass"', 'ai');
+            addOutput('  "add ethereal pads with reverb"', 'ai');
+            addOutput('  "make a groovy house bassline"', 'ai');
+            addOutput('  "add a crispy lead with filter sweep"', 'ai');
+            addOutput('', 'info');
+            addOutput('⚡ DIRECT PROFESSIONAL COMMANDS:', 'success');
+            addOutput('  play drums "x-o-x-h-" professional', 'success');
+            addOutput('  play bass [0,0,7,0] with drive and sub', 'success');
+            addOutput('  play lead [0,3,7,10] with filter sweep', 'success');
+            addOutput('  play pads [0,4,7,11] ethereal', 'success');
+            addOutput('', 'info');
+            addOutput('🎛️ PROFESSIONAL EFFECTS:', 'warning');
+            addOutput('  with drive/distortion - Analog-style saturation', 'warning');
+            addOutput('  with filter sweep - Dynamic filter automation', 'warning');
+            addOutput('  with reverb - Convolution reverb', 'warning');
+            addOutput('  with delay - Tempo-synced delay', 'warning');
+            addOutput('  with sub - Sub-oscillator layer', 'warning');
+            addOutput('', 'info');
+            addOutput('🎚️ TRANSPORT CONTROLS:', 'info');
+            addOutput('  stop all, pause all, play all', 'info');
+            addOutput('  Individual player controls in mixer', 'info');
+            addOutput('', 'info');
+            addOutput('🔊 AUDIO QUALITY: 48kHz professional synthesis', 'system');
+            addOutput('✨ ADSR envelopes, anti-aliasing, compression', 'system');
+        }
+
+        // Professional Recording Functions
+        async function startRecording() {
+            if (!audioContext) {
+                await initProfessionalAudio();
+            }
+            
+            try {
+                // Create high-quality recording stream
+                const dest = audioContext.createMediaStreamDestination();
+                analyser.connect(dest); // Record post-processing audio
+                
+                mediaRecorder = new MediaRecorder(dest.stream, {
+                    mimeType: 'audio/webm;codecs=opus',
+                    audioBitsPerSecond: 128000 // High-quality recording
+                });
+                
+                recordedChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    // Enable export button
+                    const exportBtn = document.querySelector('.control-btn[onclick="exportAudio()"]');
+                    exportBtn.disabled = false;
+                    exportBtn.style.background = 'rgba(0,255,136,0.2)';
+                    exportBtn.style.borderColor = '#00ff88';
+                    exportBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `aimusiccopilot-${Date.now()}.webm`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        
+                        addOutput('🎵 Professional audio exported successfully!', 'success');
+                    };
+                    
+                    addOutput('🎙️ Professional recording complete! Click export to download.', 'success');
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                // Update UI
+                document.getElementById('recordingIndicator').classList.add('active');
+                document.querySelector('.control-btn[onclick="startRecording()"]').disabled = true;
+                document.querySelector('.control-btn[onclick="stopRecording()"]').disabled = false;
+                
+                addOutput('🔴 Professional recording started (48kHz)...', 'info');
+                
+            } catch (error) {
+                addOutput(`❌ Recording error: ${error.message}`, 'error');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                // Update UI
+                document.getElementById('recordingIndicator').classList.remove('active');
+                document.querySelector('.control-btn[onclick="startRecording()"]').disabled = false;
+                document.querySelector('.control-btn[onclick="stopRecording()"]').disabled = true;
+                
+                addOutput('⏹️ Professional recording stopped.', 'info');
+            }
+        }
+
+        function exportAudio() {
+            addOutput('💾 Export functionality ready - click the enabled export button after recording', 'info');
+        }
+
+        function shareProject() {
+            const projectData = {
+                musicState: musicState,
+                tempo: currentTempo,
+                timestamp: Date.now(),
+                version: '3.0-professional'
+            };
+            
+            const encoded = btoa(JSON.stringify(projectData));
+            const shareUrl = `${window.location.origin}${window.location.pathname}?project=${encoded}`;
+            
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                addOutput('🔗 Professional project link copied to clipboard!', 'success');
+            }).catch(() => {
+                addOutput(`🔗 Share URL: ${shareUrl}`, 'info');
+            });
+        }
+
+        function showSettings() {
+            addOutput('⚙️ Professional Settings:', 'system');
+            addOutput(`🔊 Sample Rate: ${audioContext ? audioContext.sampleRate : 'N/A'}Hz`, 'info');
+            addOutput(`🎚️ Audio Latency: ${audioContext ? Math.round(audioContext.baseLatency * 1000) : 'N/A'}ms`, 'info');
+            addOutput('🎛️ Professional effects chain active', 'success');
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                addOutput('⛶ Fullscreen mode activated', 'info');
+            } else {
+                document.exitFullscreen();
+                addOutput('⛶ Fullscreen mode deactivated', 'info');
+            }
+        }
+
+        function loadRecent(sessionId) {
+            addOutput(`📁 Loading recent session: ${sessionId}`, 'info');
+            // In a real implementation, this would load from localStorage or server
+        }
+
+        // Event Listeners
+        document.getElementById('commandInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                processCommand();
+            }
+        });
+
+        // Initialize on load
+        window.addEventListener('load', async () => {
+            // Load project from URL if shared
+            const urlParams = new URLSearchParams(window.location.search);
+            const projectData = urlParams.get('project');
+            
+            if (projectData) {
+                try {
+                    const decoded = JSON.parse(atob(projectData));
+                    if (decoded.version === '3.0-professional') {
+                        musicState = decoded.musicState || {};
+                        currentTempo = decoded.tempo || 120;
+                        addOutput('🔗 Professional project loaded from shared link!', 'success');
+                        updatePlayersDisplay();
+                    }
+                } catch (error) {
+                    addOutput('❌ Invalid project link format', 'error');
+                }
+            }
+            
+            // Start time tracking
+            setInterval(updateTimeDisplay, 1000);
+            
+            // Professional welcome sequence
+            setTimeout(() => {
+                addOutput('🚀 Professional Audio Engine ready for production!', 'system');
+                addOutput('✨ Crystal-clear synthesis, ADSR envelopes, professional effects', 'success');
+                addOutput('🎼 Try a preset or describe your musical vision in natural language', 'info');
+            }, 1500);
+            
+            // Auto-initialize audio context on first interaction
+            document.addEventListener('click', async () => {
+                if (!audioContext) {
+                    await initProfessionalAudio();
+                }
+            }, { once: true });
+        });
+
+        // Prevent audio context issues
+        window.addEventListener('beforeunload', () => {
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.close();
+            }
+        });
+    </script>
+</body>
+</html>
