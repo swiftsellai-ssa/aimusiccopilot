@@ -769,7 +769,29 @@
     // The AI now returns a structured JSON object containing both a 'command' for execution
     // and a detailed 'metadata' object for state management, inspired by the FoxDot version.
     // This makes our state infinitely richer and our code cleaner.
-    
+
+    // Adaugă asta la începutul script-ului
+    let sampleBuffers = {}; // Va stoca bufferele audio decodate
+
+    async function loadSample(url, name) {
+        try {
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            sampleBuffers[name] = audioBuffer;
+            console.log(`✅ Sample '${name}' încărcat și decodat.`);
+        } catch (error) {
+            console.error(`❌ Eroare la încărcarea sample-ului '${name}':`, error);
+        }
+    }
+
+    // Încărcăm câteva sample-uri la pornire (după inițializarea audio)
+    // Va trebui să găzduiești aceste fișiere undeva.
+    // await initializeAudio();
+    // loadSample('path/to/kick.wav', 'kick');
+    // loadSample('path/to/snare.wav', 'snare');
+    // loadSample('path/to/hihat.wav', 'hihat');
+
     let audioContext = null;
     let masterGain = null;
     // ... (rest of the initial variables are the same)
@@ -812,7 +834,7 @@
         return midiNote - 60; // Adjust to our C4=0 standard
     }
 
-    //-- NEW: A function to control the volume of an active player.
+    //-- UPDATED: Enhanced function to control channel strip parameters
     function setPlayerVolume(player, volume) { // volume is 0.0 to 1.0
         if (activePlayers[player] && activePlayers[player].gainNode) {
             const gainNode = activePlayers[player].gainNode;
@@ -824,6 +846,32 @@
             addOutput(`🔊 Volume for ${player.toUpperCase()} set to ${Math.round(clampedVolume * 100)}%`, 'info');
         } else {
             addOutput(`🤔 Player ${player.toUpperCase()} not found. Can't set volume.`, 'warning');
+        }
+    }
+
+    //-- NEW: Function to control player panning
+    function setPlayerPan(player, pan) { // pan is -1.0 (left) to 1.0 (right)
+        if (activePlayers[player] && activePlayers[player].pannerNode) {
+            const clampedPan = Math.max(-1, Math.min(1, pan));
+            activePlayers[player].pannerNode.pan.setValueAtTime(clampedPan, audioContext.currentTime);
+            const position = clampedPan < 0 ? `${Math.abs(clampedPan * 100).toFixed(0)}% Left` :
+                           clampedPan > 0 ? `${(clampedPan * 100).toFixed(0)}% Right` : 'Center';
+            addOutput(`🎚️ Pan for ${player.toUpperCase()} set to ${position}`, 'info');
+        } else {
+            addOutput(`🤔 Player ${player.toUpperCase()} not found. Can't set pan.`, 'warning');
+        }
+    }
+
+    //-- NEW: Function to control player filter
+    function setPlayerFilter(player, type, frequency, q = 1) {
+        if (activePlayers[player] && activePlayers[player].filterNode) {
+            const filter = activePlayers[player].filterNode;
+            filter.type = type;
+            filter.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            filter.Q.value = q;
+            addOutput(`🎛️ Filter for ${player.toUpperCase()}: ${type} at ${frequency}Hz (Q=${q})`, 'info');
+        } else {
+            addOutput(`🤔 Player ${player.toUpperCase()} not found. Can't set filter.`, 'warning');
         }
     }
     
@@ -1307,24 +1355,53 @@ Current Musical State: ${currentStateSummary}`;
     //-- MODIFIED: This function now creates the main gain node for the player.
 function startBulletproofPlayer(player, config) {
     if (activePlayers[player]) {
-        // If the player exists, stop its previous scheduler
+        // Dacă player-ul există, oprește scheduler-ul vechi
         scheduler.cancel(musicState[player]?.nextEventId);
     }
 
-    // Create a dedicated gain node for this player
-    const playerGain = audioContext.createGain();
-    const destination = config.effects?.sidechain ? sidechainGain : masterGain;
-    playerGain.connect(destination);
+    // --- Noul Channel Strip ---
+    const channel = {};
+    channel.gainNode = audioContext.createGain();
+    channel.pannerNode = audioContext.createStereoPanner();
+    channel.filterNode = audioContext.createBiquadFilter(); // Pentru EQ
 
-    // Store the player's components for later control
-    activePlayers[player] = { gainNode: playerGain };
+    // Conectăm lanțul
+    channel.gainNode.connect(channel.pannerNode);
+    channel.pannerNode.connect(channel.filterNode);
+
+    // Conectăm la destinația finală (cu sau fără sidechain)
+    const destination = config.effects?.sidechain ? sidechainGain : masterGain;
+    channel.filterNode.connect(destination);
+
+    // Setări implicite pentru channel strip
+    channel.gainNode.gain.setValueAtTime(1.0, audioContext.currentTime);
+    channel.pannerNode.pan.setValueAtTime(0, audioContext.currentTime); // Centru
+    channel.filterNode.type = 'allpass'; // Neutru by default
+    channel.filterNode.frequency.setValueAtTime(20000, audioContext.currentTime);
+
+    // Aplicăm efectele din config dacă există
+    if (config.effects) {
+        if (config.effects.pan !== undefined) {
+            channel.pannerNode.pan.setValueAtTime(config.effects.pan, audioContext.currentTime);
+        }
+        if (config.effects.filter) {
+            channel.filterNode.type = config.effects.filter.type || 'lowpass';
+            channel.filterNode.frequency.setValueAtTime(config.effects.filter.frequency || 5000, audioContext.currentTime);
+            channel.filterNode.Q.value = config.effects.filter.q || 1;
+        }
+    }
+
+    // Stocăm întregul channel strip pentru control ulterior
+    activePlayers[player] = channel;
     musicState[player] = { ...config, status: 'playing' };
 
+    // Acum, când creăm sunetul, îl conectăm la intrarea channel strip-ului
+    // adică la channel.gainNode
     if (config.type.match(/drum|hi-hat|kick|snare/)) {
-        playBulletproofPattern(player, config.pattern, config.effects || {}, playerGain);
+        playBulletproofPattern(player, config.pattern, config.effects || {}, channel.gainNode);
     } else {
         const octave = config.type === 'bass' ? 3 : 4;
-        playBulletproofMelody(player, config.notes, { ...config, octave }, playerGain);
+        playBulletproofMelody(player, config.notes, { ...config, octave }, channel.gainNode);
     }
 }
 
@@ -1410,129 +1487,161 @@ function startBulletproofPlayer(player, config) {
         }
         scheduleNextBeat();
     }
-    // FIXED: Complete and working drum synthesis implementation
+    // Versiune îmbunătățită a funcției - PRIORITATE SAMPLE-URI
     function createBulletproofDrum(type, effects = {}, destinationNode = masterGain) {
-        if (!ensureAudioContext()) return; 
+        if (!ensureAudioContext()) return;
         const now = audioContext.currentTime;
-        const amp = effects.amp || 1.0; // Default to 1.0 if no amp is provided
-        
-        if (type === 'kick' || type === 'x') {
-            const oscGroup = oscillatorPool.createNode('osc'); 
-            if(!oscGroup) return; 
-            const { node: osc, gain } = oscGroup; 
-            osc.type = 'sine';
-            
-            gain.gain.setValueAtTime(1 * amp, now); // Apply amp
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-            osc.frequency.setValueAtTime(120, now); 
-            osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
-            
-            osc.connect(gain); 
-            gain.connect(destinationNode); 
-            osc.start(now); 
-            osc.stop(now + 0.2);
-            
-            // Sidechain effect
-            if (sidechainGain && effects.sidechain) { 
-                sidechainGain.gain.cancelScheduledValues(now); 
-                sidechainGain.gain.setValueAtTime(sidechainGain.gain.value, now); 
-                sidechainGain.gain.linearRampToValueAtTime(0.3, now + 0.01); 
-                sidechainGain.gain.linearRampToValueAtTime(1.0, now + 0.25); 
+        const amp = effects.amp || 1.0;
+
+        let sampleName = '';
+        if (type === 'kick' || type === 'x') sampleName = 'kick';
+        if (type === 'snare' || type === 'o') sampleName = 'snare';
+        if (type === 'hihat' || type === 'h' || type === '.') sampleName = 'hihat';
+        if (type === 'open-hihat' || type === 'H') sampleName = 'open-hihat';
+        if (type === 'clap' || type === 'c') sampleName = 'clap';
+        if (type === 'tom' || type === 't') sampleName = 'tom';
+
+        // PRIORITATE: Folosește sample dacă există
+        if (sampleName && sampleBuffers[sampleName]) {
+            const source = audioContext.createBufferSource();
+            source.buffer = sampleBuffers[sampleName];
+
+            const gainNode = audioContext.createGain();
+            gainNode.gain.setValueAtTime(amp, now);
+
+            source.connect(gainNode);
+            gainNode.connect(destinationNode);
+            source.start(now);
+
+            // Sidechain-ul poate rămâne aici, funcționează la fel
+            if ((type === 'kick' || type === 'x') && sidechainGain && effects.sidechain) {
+                sidechainGain.gain.cancelScheduledValues(now);
+                sidechainGain.gain.setValueAtTime(sidechainGain.gain.value, now);
+                sidechainGain.gain.linearRampToValueAtTime(0.3, now + 0.01);
+                sidechainGain.gain.linearRampToValueAtTime(1.0, now + 0.25);
             }
-        } else if (type === 'snare' || type === 'o') {
-            const noiseGroup = oscillatorPool.createNode('noise'); 
-            const oscGroup = oscillatorPool.createNode('osc'); 
-            if(!noiseGroup || !oscGroup) return;
-            
-            const { node: noise, gain: noiseGain } = noiseGroup; 
-            const { node: osc, gain: oscGain } = oscGroup; 
-            const filter = audioContext.createBiquadFilter();
-            
-            filter.type = 'highpass'; 
-            filter.frequency.value = 1500; 
-            noise.connect(filter); 
-            filter.connect(noiseGain); 
-            noiseGain.connect(destinationNode);
-            
-            osc.type = 'triangle'; 
-            osc.frequency.value = 180; 
-            osc.connect(oscGain); 
-            oscGain.connect(destinationNode);
-            
-            noiseGain.gain.setValueAtTime(0.8 * amp, now); // Apply amp
-            noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-            oscGain.gain.setValueAtTime(0.7 * amp, now); // Apply amp
-            oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-            
-            noise.start(now); 
-            noise.stop(now + 0.2); 
-            osc.start(now); 
-            osc.stop(now + 0.1);
-        } else if (type === 'hihat' || type === 'h' || type === '.') {
-            const noiseGroup = oscillatorPool.createNode('noise'); 
-            if(!noiseGroup) return; 
-            const { node: noise, gain } = noiseGroup;
-            const filter = audioContext.createBiquadFilter(); 
-            
-            filter.type = 'highpass'; 
-            filter.frequency.value = 8000; 
-            noise.connect(filter); 
-            filter.connect(gain); 
-            gain.connect(destinationNode);
-            
-            gain.gain.setValueAtTime(0.3, now); 
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08); 
-            noise.start(now); 
-            noise.stop(now + 0.1);
-        } else if (type === 'open-hihat' || type === 'H') {
-            const noiseGroup = oscillatorPool.createNode('noise'); 
-            if(!noiseGroup) return; 
-            const { node: noise, gain } = noiseGroup;
-            const filter = audioContext.createBiquadFilter(); 
-            
-            filter.type = 'highpass'; 
-            filter.frequency.value = 7000; 
-            noise.connect(filter); 
-            filter.connect(gain); 
-            gain.connect(destinationNode);
-            
-            gain.gain.setValueAtTime(0.4, now); 
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4); 
-            noise.start(now); 
-            noise.stop(now + 0.5);
-        } else if (type === 'clap' || type === 'c') {
-            const noiseGroup = oscillatorPool.createNode('noise'); 
-            if(!noiseGroup) return; 
-            const { node: noise, gain } = noiseGroup;
-            const filter = audioContext.createBiquadFilter(); 
-            
-            filter.type = 'bandpass'; 
-            filter.frequency.value = 1500; 
-            filter.Q.value = 2;
-            noise.connect(filter); 
-            filter.connect(gain); 
-            gain.connect(destinationNode); 
-            
-            gain.gain.setValueAtTime(0, now); 
-            gain.gain.linearRampToValueAtTime(1, now + 0.01);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); 
-            noise.start(now); 
-            noise.stop(now + 0.15);
-        } else if (type === 'tom' || type === 't') {
-            const oscGroup = oscillatorPool.createNode('osc'); 
-            if(!oscGroup) return; 
-            const { node: osc, gain } = oscGroup; 
-            osc.type = 'sine';
-            
-            gain.gain.setValueAtTime(0.8, now); 
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-            osc.frequency.setValueAtTime(200, now); 
-            osc.frequency.exponentialRampToValueAtTime(100, now + 0.3);
-            
-            osc.connect(gain); 
-            gain.connect(destinationNode); 
-            osc.start(now); 
-            osc.stop(now + 0.3);
+        } else {
+            // FALLBACK: Dacă sample-ul nu există, folosește sinteza veche
+            console.warn(`Sample-ul pentru '${type}' nu a fost găsit. Se folosește sinteza.`);
+
+            if (type === 'kick' || type === 'x') {
+                const oscGroup = oscillatorPool.createNode('osc');
+                if(!oscGroup) return;
+                const { node: osc, gain } = oscGroup;
+                osc.type = 'sine';
+
+                gain.gain.setValueAtTime(1 * amp, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+
+                osc.connect(gain);
+                gain.connect(destinationNode);
+                osc.start(now);
+                osc.stop(now + 0.2);
+
+                // Sidechain effect
+                if (sidechainGain && effects.sidechain) {
+                    sidechainGain.gain.cancelScheduledValues(now);
+                    sidechainGain.gain.setValueAtTime(sidechainGain.gain.value, now);
+                    sidechainGain.gain.linearRampToValueAtTime(0.3, now + 0.01);
+                    sidechainGain.gain.linearRampToValueAtTime(1.0, now + 0.25);
+                }
+            } else if (type === 'snare' || type === 'o') {
+                const noiseGroup = oscillatorPool.createNode('noise');
+                const oscGroup = oscillatorPool.createNode('osc');
+                if(!noiseGroup || !oscGroup) return;
+
+                const { node: noise, gain: noiseGain } = noiseGroup;
+                const { node: osc, gain: oscGain } = oscGroup;
+                const filter = audioContext.createBiquadFilter();
+
+                filter.type = 'highpass';
+                filter.frequency.value = 1500;
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(destinationNode);
+
+                osc.type = 'triangle';
+                osc.frequency.value = 180;
+                osc.connect(oscGain);
+                oscGain.connect(destinationNode);
+
+                noiseGain.gain.setValueAtTime(0.8 * amp, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                oscGain.gain.setValueAtTime(0.7 * amp, now);
+                oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+                noise.start(now);
+                noise.stop(now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'hihat' || type === 'h' || type === '.') {
+                const noiseGroup = oscillatorPool.createNode('noise');
+                if(!noiseGroup) return;
+                const { node: noise, gain } = noiseGroup;
+                const filter = audioContext.createBiquadFilter();
+
+                filter.type = 'highpass';
+                filter.frequency.value = 8000;
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(destinationNode);
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                noise.start(now);
+                noise.stop(now + 0.1);
+            } else if (type === 'open-hihat' || type === 'H') {
+                const noiseGroup = oscillatorPool.createNode('noise');
+                if(!noiseGroup) return;
+                const { node: noise, gain } = noiseGroup;
+                const filter = audioContext.createBiquadFilter();
+
+                filter.type = 'highpass';
+                filter.frequency.value = 7000;
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(destinationNode);
+
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                noise.start(now);
+                noise.stop(now + 0.5);
+            } else if (type === 'clap' || type === 'c') {
+                const noiseGroup = oscillatorPool.createNode('noise');
+                if(!noiseGroup) return;
+                const { node: noise, gain } = noiseGroup;
+                const filter = audioContext.createBiquadFilter();
+
+                filter.type = 'bandpass';
+                filter.frequency.value = 1500;
+                filter.Q.value = 2;
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(destinationNode);
+
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(1, now + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                noise.start(now);
+                noise.stop(now + 0.15);
+            } else if (type === 'tom' || type === 't') {
+                const oscGroup = oscillatorPool.createNode('osc');
+                if(!oscGroup) return;
+                const { node: osc, gain } = oscGroup;
+                osc.type = 'sine';
+
+                gain.gain.setValueAtTime(0.8, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.3);
+
+                osc.connect(gain);
+                gain.connect(destinationNode);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
         }
     }
     function playBulletproofPattern(player, pattern, effects = {}, playerGain = masterGain) {
@@ -1619,7 +1728,29 @@ function startBulletproofPlayer(player, config) {
     }
     // (The rest of the UI and control functions are mostly unchanged)
     function setupAPI() { const input = document.getElementById('apiKeyInput'); apiKey = input.value.trim(); if (apiKey) { document.getElementById('apiSetup').style.display = 'none'; addOutput('✅ AI features activated!', 'success'); } }
-    function addOutput(text, type = 'info') { const output = document.getElementById('output'); const div = document.createElement('div'); div.className = type; div.textContent = `[${new Date().toLocaleTimeString('en-GB', { timeZone: 'Europe/London' })}] ${text}`; output.appendChild(div); output.scrollTop = output.scrollHeight; if (output.children.length > 100) output.removeChild(output.children[0]); }
+    function addOutput(text, type = 'info') {
+        const output = document.getElementById('output');
+
+        // Verificăm DACĂ utilizatorul este deja la capătul log-ului ÎNAINTE de a adăuga noul element
+        // Adăugăm o mică toleranță (1px) pentru a evita erori de rotunjire
+        const isScrolledToBottom = output.scrollHeight - output.clientHeight <= output.scrollTop + 1;
+
+        const div = document.createElement('div');
+        div.className = type;
+        // Am scos timestamp-ul pentru un aspect mai curat, dar îl poți adăuga înapoi dacă dorești
+        div.textContent = text;
+        output.appendChild(div);
+
+        // Facem scroll automat DOAR dacă era deja la capăt
+        if (isScrolledToBottom) {
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Prevenim umplerea excesivă a memoriei
+        if (output.children.length > 150) {
+            output.removeChild(output.children[0]);
+        }
+    }
     function setMasterVolume(value) { if (masterGain) masterGain.gain.value = value; document.getElementById('volumeDisplay').textContent = `${Math.round(value * 100)}%`; }
     function setTempo(value) { currentTempo = parseInt(value); document.getElementById('tempoDisplay').textContent = value; document.getElementById('bpmDisplay').textContent = value; }
     function stopAllSounds() { 
@@ -1643,25 +1774,28 @@ function startBulletproofPlayer(player, config) {
     const presets = {
         'progressive-house': [
             {
-                delay: 0, // Starts immediately
-                metadata: { type: 'drum', pattern: 'x-hH-o-hH-x-hH-o-hH' } // More complex hi-hat pattern
+                delay: 0, // Începe doar cu toba mare, pentru a stabili ritmul
+                metadata: { type: 'kick', pattern: 'x---x---x---x---', amp: 0.95 }
             },
             {
-                delay: 8000, // Starts after 4 bars (at 120bpm)
-                metadata: { type: 'bass', preset: 'square-bass', notes: [0, 0, 5, 7], amp: 0.8, effects: { sidechain: true } }
+                delay: 4000, // Intră hi-hat-urile după 2 măsuri (la 120bpm)
+                metadata: { type: 'hihats', pattern: '-h-h-h-h-h-h-h-h', amp: 0.4 } // Volum redus, de textură
             },
             {
-                delay: 16000, // Starts after 8 bars
-                metadata: { type: 'pads', preset: 'sine-pad', notes: [0, 4, 7, 11], amp: 0.6, effects: { reverb: 'long' } }
+                delay: 8000, // Basul intră după 4 măsuri, completând groove-ul
+                metadata: { type: 'bass', preset: 'square-bass', notes: [0, 0, 7, 5], amp: 0.8, effects: { sidechain: true } } // Puternic, dar sub kick
             },
             {
-                delay: 24000, // Starts after 12 bars
-                metadata: { 
-                    type: 'lead', 
-                    preset: 'lead', 
-                    notes: [12, 16, 19, 16, 14, 16, 12], // More melodic phrase
-                    amp: 0.7,
-                    // We'll add filter effects here in the next step!
+                delay: 16000, // Pad-urile intră pentru a crea atmosferă
+                metadata: { type: 'pads', preset: 'sine-pad', notes: [0, 4, 7, 11], amp: 0.55, effects: { reverb: 'long' } } // În spate, creând spațiu
+            },
+            {
+                delay: 24000, // Melodia principală (Lead) intră după 12 măsuri, ca un punct culminant
+                metadata: {
+                    type: 'lead',
+                    preset: 'saw-lead',
+                    notes: [12, 16, 19, 16, 14, 16, 12],
+                    amp: 0.7, // Prezent, dar nu acoperă tot
                     effects: { "filter": { "type": "lowpass", "frequency": 1200, "q": 5 }, "lfo": { "target": "filter", "rate": 4, "amount": 600 } }
                 }
             }
@@ -1669,144 +1803,180 @@ function startBulletproofPlayer(player, config) {
         'dark-techno': [
             {
                 delay: 0,
-                metadata: { type: 'drum', pattern: 'x-x-c-x-', amp: 1.0 }
+                metadata: { type: 'kick', pattern: 'x-x-x-x-', amp: 1.0, effects: { sidechain: true } } // Foarte puternic, specific genului
+            },
+            {
+                delay: 2000, // Un clap percusiv
+                metadata: { type: 'clap', pattern: '----c-------c---', amp: 0.7 }
             },
             {
                 delay: 4000,
-                metadata: { 
-                    type: 'bass', 
-                    preset: 'square-bass', 
-                    notes: [0, 0, 7, 3], 
-                    amp: 0.9, 
-                    effects: { sidechain: true, saturation: 0.3 } 
+                metadata: {
+                    type: 'bass',
+                    preset: 'square-bass',
+                    notes: [0, 0, 1, 0], // O linie de bas mai întunecată, monotonă
+                    amp: 0.85,
+                    effects: { sidechain: true, saturation: 0.4 }
                 }
             },
             {
-                delay: 8000,
-                metadata: { 
-                    type: 'pads', 
-                    preset: 'sine-pad', 
-                    notes: [0, 3, 7, 10], 
-                    amp: 0.5,
-                    effects: { filter: { type: 'lowpass', frequency: 800, q: 2 } } 
+                delay: 12000,
+                metadata: {
+                    type: 'hihats',
+                    pattern: '--h-h-h-h-h',
+                    amp: 0.5
                 }
             }
         ],
         'future-bass': [
             {
                 delay: 0,
-                metadata: { type: 'drum', pattern: 'x-h-o-h-', amp: 0.8 }
+                metadata: { type: 'kick', pattern: 'x---x---', amp: 0.85 }
             },
             {
-                delay: 6000,
-                metadata: { 
-                    type: 'bass', 
-                    preset: 'saw-lead', 
-                    notes: [0, 7, 12, 7], 
-                    amp: 0.8,
+                delay: 4000,
+                metadata: { type: 'snare', pattern: '----o---', amp: 0.8 }
+            },
+            {
+                delay: 8000,
+                metadata: {
+                    type: 'bass',
+                    preset: 'saw-lead',
+                    notes: [0, 7, 12, 7],
+                    amp: 0.75,
                     effects: { lfo: { target: 'filter', rate: 3, amount: 400 } }
                 }
             },
             {
-                delay: 12000,
-                metadata: { 
-                    type: 'pads', 
-                    preset: 'sine-pad', 
-                    notes: [0, 4, 7, 14], 
+                delay: 16000,
+                metadata: {
+                    type: 'pads',
+                    preset: 'sine-pad',
+                    notes: [0, 4, 7, 14],
                     amp: 0.6,
-                    effects: { reverb: 'long' }
+                    effects: { reverb: 'long', filter: { type: 'lowpass', frequency: 3000, q: 1.5 } }
+                }
+            },
+            {
+                delay: 24000,
+                metadata: {
+                    type: 'lead',
+                    preset: 'saw-lead',
+                    notes: [12, 19, 24, 19, 16],
+                    amp: 0.65,
+                    effects: { filter: { type: 'lowpass', frequency: 2500, q: 4 } }
                 }
             }
         ],
         'minimal-deep': [
             {
                 delay: 0,
-                metadata: { type: 'drum', pattern: 'x---o---', amp: 0.7 }
+                metadata: { type: 'kick', pattern: 'x-----x-', amp: 0.9 }
             },
             {
                 delay: 8000,
-                metadata: { 
-                    type: 'bass', 
-                    preset: 'square-bass', 
-                    notes: [0, 0, 0, 5], 
-                    amp: 0.6,
-                    effects: { sidechain: true }
-                }
+                metadata: { type: 'hihats', pattern: '--h---h-', amp: 0.3 }
             },
             {
                 delay: 16000,
-                metadata: { 
-                    type: 'pads', 
-                    preset: 'sine-pad', 
-                    notes: [0, 7, 12], 
-                    amp: 0.4
+                metadata: {
+                    type: 'bass',
+                    preset: 'square-bass',
+                    notes: [0, 0, 0, 5],
+                    amp: 0.65,
+                    effects: { sidechain: true, filter: { type: 'lowpass', frequency: 400, q: 2 } }
+                }
+            },
+            {
+                delay: 32000,
+                metadata: {
+                    type: 'pads',
+                    preset: 'sine-pad',
+                    notes: [0, 7, 12],
+                    amp: 0.4,
+                    effects: { reverb: 'long' }
                 }
             }
         ],
         'euphoric-trance': [
             {
                 delay: 0,
-                metadata: { type: 'drum', pattern: 'x-o-x-o-', amp: 0.9 }
+                metadata: { type: 'kick', pattern: 'x-x-x-x-', amp: 0.95 }
+            },
+            {
+                delay: 2000,
+                metadata: { type: 'snare', pattern: '----o---', amp: 0.75 }
             },
             {
                 delay: 4000,
-                metadata: { 
-                    type: 'bass', 
-                    preset: 'square-bass', 
-                    notes: [0, 5, 7, 12], 
+                metadata: {
+                    type: 'bass',
+                    preset: 'square-bass',
+                    notes: [0, 5, 7, 12],
                     amp: 0.8,
                     effects: { sidechain: true }
                 }
             },
             {
                 delay: 8000,
-                metadata: { 
-                    type: 'pads', 
-                    preset: 'sine-pad', 
-                    notes: [0, 4, 7, 11], 
-                    amp: 0.7,
+                metadata: {
+                    type: 'pads',
+                    preset: 'sine-pad',
+                    notes: [0, 4, 7, 11],
+                    amp: 0.6,
                     effects: { reverb: 'long' }
                 }
             },
             {
                 delay: 16000,
-                metadata: { 
-                    type: 'lead', 
-                    preset: 'saw-lead', 
-                    notes: [12, 16, 19, 24], 
-                    amp: 0.6,
-                    effects: { filter: { type: 'lowpass', frequency: 2000, q: 3 } }
+                metadata: {
+                    type: 'lead',
+                    preset: 'saw-lead',
+                    notes: [12, 16, 19, 24, 19, 16],
+                    amp: 0.7,
+                    effects: { filter: { type: 'lowpass', frequency: 2000, q: 3 }, lfo: { target: 'filter', rate: 2, amount: 300 } }
                 }
             }
         ],
         'ambient-cinematic': [
             {
                 delay: 0,
-                metadata: { 
-                    type: 'pads', 
-                    preset: 'sine-pad', 
-                    notes: [0, 4, 7, 11, 14], 
-                    amp: 0.5,
-                    effects: { reverb: 'long' }
+                metadata: {
+                    type: 'pads',
+                    preset: 'sine-pad',
+                    notes: [0, 4, 7, 11, 14],
+                    amp: 0.45,
+                    effects: { reverb: 'long', filter: { type: 'lowpass', frequency: 2000, q: 1 } }
                 }
             },
             {
                 delay: 12000,
-                metadata: { 
-                    type: 'pads', 
-                    preset: 'sine-pad', 
-                    notes: [7, 11, 14, 19], 
-                    amp: 0.4,
-                    effects: { delay: true, reverb: 'long' }
+                metadata: {
+                    type: 'pads',
+                    preset: 'sine-pad',
+                    notes: [7, 11, 14, 19],
+                    amp: 0.35,
+                    effects: { delay: true, reverb: 'long', pan: 0.3 }
                 }
             },
             {
                 delay: 24000,
-                metadata: { 
-                    type: 'bass', 
-                    preset: 'sine-pad', 
-                    notes: [0, 0, 0, 0], 
-                    amp: 0.3
+                metadata: {
+                    type: 'bass',
+                    preset: 'sine-pad',
+                    notes: [0, 0, 0, 0],
+                    amp: 0.25,
+                    effects: { filter: { type: 'lowpass', frequency: 150, q: 1 } }
+                }
+            },
+            {
+                delay: 36000,
+                metadata: {
+                    type: 'lead',
+                    preset: 'sine-pad',
+                    notes: [24, 26, 28, 31],
+                    amp: 0.4,
+                    effects: { reverb: 'long', delay: true, pan: -0.4 }
                 }
             }
         ]
